@@ -8,3 +8,6 @@
 
 [functions]
   node_bundler = "esbuild"
+
+[context.production]
+  command = "node scripts/verify-skydropx.js && npm run build"
