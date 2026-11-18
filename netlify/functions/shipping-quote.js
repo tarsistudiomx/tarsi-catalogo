@@ -12,12 +12,19 @@ async function requestJson(url,options={}){
  if(!response.ok)throw new Error('Skydropx HTTP '+response.status);
  return body;
 }
+function rateCandidates(result){
+ const containers=[result?.included,result?.rates,result?.data?.rates,result?.data?.attributes?.rates,result?.data?.included,result?.quotation?.rates,result?.data];
+ const out=[];
+ for(const c of containers){if(Array.isArray(c))out.push(...c);else if(c&&typeof c==='object'&&Array.isArray(c.data))out.push(...c.data)}
+ return out;
+}
 function unpackRates(result){
- const raw=result?.included||result?.rates||result?.data?.rates||result?.data?.attributes?.rates||[];
- return (Array.isArray(raw)?raw:[]).map(x=>{
-  const a=x.attributes||x;
-  return {id:x.id||a.id,price:positive(a.total)||positive(a.amount)||positive(a.price),days:positive(a.days)||positive(a.delivery_days),status:a.status};
- }).filter(x=>x.id&&x.price&&(!x.status||['price_found_external','price_found','available','completed'].includes(x.status)));
+ return rateCandidates(result).map(x=>{
+  const a=x?.attributes||x||{};
+  const price=positive(a.total)||positive(a.amount)||positive(a.price)||positive(a.total_price)||positive(a.cost)||positive(a?.pricing?.total);
+  const status=String(a.status||'').toLowerCase();
+  return {id:x?.id||a.id,price,days:positive(a.days)||positive(a.delivery_days)||positive(a.estimated_delivery_days),status};
+ }).filter(x=>x.id&&x.price&&(!x.status||['price_found_external','price_found','available','completed','success','quoted','ready'].includes(x.status)));
 }
 const customerPrice=price=>Math.ceil((price+Math.max(price*.2,30))/10)*10;
 async function quote(body){
@@ -35,14 +42,22 @@ async function quote(body){
  const created=await requestJson(API+'/api/v1/quotations',{method:'POST',headers,body:JSON.stringify(payload)});
  const id=created.id||created.quotation_id||created.data?.id||created.data?.attributes?.quotation_id;
  if(!id)throw new Error('Skydropx no devolviÃ³ identificador');
- let rates=[];
- for(let attempt=0;attempt<7;attempt++){
-  await sleep(1000);
+ let rates=[];let lastStatus='';let observed=0;
+ // Las cotizaciones se procesan de forma asÃ­ncrona. No depender Ãºnicamente de is_completed.
+ for(let attempt=0;attempt<12;attempt++){
+  if(attempt)await sleep(attempt<5?1000:1500);
   const result=await requestJson(API+'/api/v1/quotations/'+encodeURIComponent(id),{headers});
-  const completed=result.is_completed===true||result.data?.attributes?.is_completed===true||result.data?.attributes?.status==='completed';
-  if(completed){rates=unpackRates(result);break}
+  const found=unpackRates(result);
+  observed=Math.max(observed,rateCandidates(result).length);
+  lastStatus=String(result?.status||result?.data?.attributes?.status||'');
+  if(found.length){rates=found;break}
+  const completed=result?.is_completed===true||result?.data?.attributes?.is_completed===true||lastStatus==='completed';
+  if(completed&&attempt>=5)break;
  }
- if(!rates.length)return {statusCode:503,data:{error:'No se encontraron tarifas completas para este destino'}};
+ if(!rates.length){
+  console.warn('Skydropx sin tarifa utilizable',{quotationId:id,observedRates:observed,status:lastStatus});
+  return {statusCode:503,data:{error:observed?'Skydropx devolviÃ³ tarifas, pero ninguna tenÃ­a un precio y estado utilizables':'Skydropx no devolviÃ³ tarifas para este destino dentro del tiempo de espera',code:observed?'RATES_UNUSABLE':'RATES_EMPTY'}};
+ }
  rates.sort((a,b)=>a.price-b.price||(a.days||999)-(b.days||999));
  const selected=rates[0];
  return {statusCode:200,data:{customer_price:customerPrice(selected.price),estimated_days:selected.days||null,service:'EnvÃ­o TARSI',expires_at:new Date(Date.now()+23*3600*1000).toISOString()}};
