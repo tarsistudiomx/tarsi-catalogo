@@ -7,9 +7,9 @@
     ['Sally', 'CINE / AUTOS'], ['Majin Vegeta', 'ANIME'],
     ['Goku Ultra Instinto', 'ANIME'], ['Amazing Fantasy', 'CÓMICS'],
     ['Miles Morales', 'CÓMICS'], ['Spider-Man clásico', 'CÓMICS'],
-    ['Spider-Man emblema', 'CÓMICS'], ['Checo Pérez · Never Give Up', 'CINE / AUTOS']
-  ].map(([name, category], id) => ({
-    name, category, image: 'assets/playera-' + String(id + 1).padStart(2, '0') + '.jpg'
+    ['Spider-Man emblema', 'CÓMICS', 'playera-11.png'], ['Checo Pérez · Never Give Up', 'CINE / AUTOS']
+  ].map(([name, category, photo], id) => ({
+    name, category, image: 'assets/' + (photo ?? 'playera-' + String(id + 1).padStart(2, '0') + '.jpg')
   }));
   const sizes = ['XS', 'S', 'M', 'L', 'XL', 'XXL'];
   const maxQuantity = 30;
