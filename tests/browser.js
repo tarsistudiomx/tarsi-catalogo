@@ -19,7 +19,7 @@ const routes = {
   'postal-code': postalHandler(catalog),
   'shipping-quote': shippingHandler({env, catalog, async sky(origin, address) {
     if (address.area_level3 === 'La Finca') throw new HttpError(503, 'RATES_UNUSABLE', 'No hay una tarifa a domicilio disponible.');
-    return {quotationId: 'browser-q', rateId: 'r-1', customerPrice: 140, days: 2};
+    return {quotationId: 'browser-q', rateId: 'r-1', customerPrice: 140, days: 2, carrier: 'FedEx', service: 'Priority'};
   }})
 };
 
@@ -98,6 +98,7 @@ test('Chromium móvil: catálogo, carrito mixto, dirección canónica, costo y p
     assert.equal(await page.inputValue('#neighborhood'), 'San Ángel');
     await page.click('#quoteShipping');
     await waitText(page, '#totals .final', '$1,538 MXN');
+    await waitText(page, '#shippingStatus', 'FedEx Priority');
     await waitText(page, '#shippingStatus', '2 días hábiles');
     await page.getByRole('button', {name: 'Sumar una'}).first().click();
     await waitText(page, '#totals .final', 'Por confirmar');
@@ -110,6 +111,8 @@ test('Chromium móvil: catálogo, carrito mixto, dirección canónica, costo y p
     const draft = await page.evaluate(() => new URL(window.orderMail).searchParams.get('body'));
     assert.match(draft, /COLONIA: San Ángel/);
     assert.match(draft, /ENVÍO: \$140 MXN/);
+    assert.match(draft, /PAQUETERÍA: FedEx · Priority/);
+    assert.match(draft, /COTIZACIÓN SKYDROPX: browser-q/);
     assert.match(draft, /TOTAL: \$1,538 MXN/);
     assert.deepEqual(errors, []);
   } finally {

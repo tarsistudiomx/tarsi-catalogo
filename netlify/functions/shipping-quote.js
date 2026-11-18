@@ -29,6 +29,9 @@ function createHandler({env = process.env, catalog = postal, sky = createSkydrop
       customer_price: quote.customerPrice,
       estimated_days: quote.days,
       service: 'Envío TARSI',
+      carrier_name: quote.carrier,
+      carrier_service: quote.service,
+      quotation_id: quote.quotationId,
       expires_at: new Date(expires).toISOString()
     }};
   });

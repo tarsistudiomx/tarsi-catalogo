@@ -13,7 +13,10 @@ const postalGroups = {
 };
 const destination = {postal_code: '01000', area_level1: 'CIUDAD DE MEXICO', area_level2: 'alvaro obregon',
   area_level3: 'COL. SAN ANGEL'};
-const rate = {id: 'r-1', success: true, status: 'price_found_internal', currency_code: 'MXN', total: '106.19', days: 2};
+const rate = {
+  id: 'r-1', success: true, status: 'price_found_internal', currency_code: 'MXN',
+  provider_name: 'fedex', provider_service_name: 'Priority', total: '106.19', days: 2
+};
 
 function memoryStore(entries) {
   const values = new Map(entries);

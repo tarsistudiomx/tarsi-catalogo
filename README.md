@@ -2,6 +2,8 @@
 
 GitHub Pages aloja el catálogo público. La tienda consulta las funciones de Netlify para completar la dirección y cotizar el envío. Los pedidos siguen las opciones manuales del carrito. El cliente ve el subtotal promocional, el envío y el total después de cotizar.
 
+El cotizador solicita únicamente FedEx, Estafeta, Paquetexpress y DHL a Skydropx PRO. El carrito muestra la paquetería y el servicio de la tarifa elegida. El pedido incluye también el folio de cotización.
+
 ## Pruebas
 
 ```sh

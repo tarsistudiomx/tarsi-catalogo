@@ -75,11 +75,14 @@ $('cartItems').addEventListener('click', event => {
 function orderText() {
   const n = count();
   const quote = window.TarsiShipping.currentQuote();
+  const carrier = [quote?.carrier_name, quote?.carrier_service].filter(Boolean).join(' · ');
   return [
     'PEDIDO TARSI®', 'WEAR WHAT YOU LOVE.', '',
     ...cart.map(x => `${products[x.id].name} | Talla ${x.size} | ${x.qty} pieza(s)`),
     '', `PIEZAS: ${n}`, `SUBTOTAL DE PRENDAS: ${money(pricing(n))}`,
     `ENVÍO: ${quote ? money(quote.customer_price) : 'Por confirmar'}`,
+    ...(carrier ? [`PAQUETERÍA: ${carrier}`] : []),
+    ...(quote?.quotation_id ? [`COTIZACIÓN SKYDROPX: ${quote.quotation_id}`] : []),
     `TOTAL: ${quote ? money(pricing(n) + quote.customer_price) : 'Por confirmar'}`,
     '', `NOMBRE: ${$('buyer').value.trim() || 'Por confirmar'}`,
     `MUNICIPIO / ESTADO: ${[$('city').value, $('state').value].filter(Boolean).join(', ') || 'Por confirmar'}`,

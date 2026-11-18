@@ -22,21 +22,36 @@ test('promociones para 0 a 30 y mezcla de modelos y tallas', () => {
 
 test('peso de 350 g y envío exacto con umbrales de margen y de redondeo', () => {
   assert.deepEqual([1, 2, 3, 4, 6, 30].map(n => parcelFor(n).weight), [0.35, 0.7, 1.05, 1.4, 2.1, 10.5]);
-  assert.deepEqual([10619, 12000, 12001, 15000, 15001, 20000, 25000].map(shippingPrice),
-    [140, 150, 160, 180, 190, 240, 300]);
+  assert.deepEqual([10619, 12000, 12009, 15000, 15001, 16000, 20000, 25000].map(shippingPrice),
+    [140, 150, 160, 180, 190, 200, 240, 300]);
 });
 
-test('tarifas utilizables: solo MXN, servicio a domicilio, precio total y estados oficiales', () => {
+test('tarifas utilizables: solo MXN, precio total y estados oficiales', () => {
   const rejected = [null, 0, -12, '', 'NaN', Infinity, true, '0x6E', '1e3', '100,000', '15.003']
     .map(total => ({...rate, total, amount: '9.00'}));
   rejected.push(...['no_coverage', 'pending', 'coverage_checked', 'tariff_price_not_found']
     .map(status => ({...rate, status})),
-  {...rate, currency_code: 'USD'}, {...rate, success: false}, {...rate, office_delivery: true},
+  {...rate, currency_code: 'USD'}, {...rate, success: false},
   {...rate, requires_origin_verification: true});
   assert.deepEqual(usableRates(rejected), []);
   assert.deepEqual(usableRates([rate, {...rate, id: 'r-2', status: 'approved', total: 105},
     {...rate, id: 'r-3', status: 'price_found_external', total: '105.00', days: 1}]).map(r => r.id),
   ['r-3', 'r-2', 'r-1']);
+});
+
+test('solo acepta el código oficial de las cuatro paqueterías y conserva el servicio', () => {
+  const rows = [
+    {...rate, id: 'cheap', provider_name: 'otro', provider_display_name: 'FedEx', total: 1},
+    {...rate, id: 'missing', provider_name: undefined, total: 1},
+    {...rate, id: 'dhl', provider_name: ' DHL ', provider_service_name: 'Express\nMéxico', total: 100, office_delivery: true},
+    {...rate, id: 'estafeta', provider_name: 'estafeta', provider_service_name: '', provider_service_code: 'terrestre'},
+    {...rate, id: 'paquetexpress', provider_name: 'paquetexpress', total: 110},
+    rate
+  ];
+  const results = usableRates(rows);
+  assert.deepEqual(new Set(results.map(r => r.carrier)), new Set(['DHL', 'Estafeta', 'Paquetexpress', 'FedEx']));
+  assert.deepEqual(results[0], {id: 'dhl', carrier: 'DHL', service: 'Express México', cents: 10000, days: 2});
+  assert.equal(results.find(r => r.id === 'estafeta').service, 'terrestre');
 });
 
 test('colonia canónica, acentos, abreviaturas y código postal de cinco caracteres', async () => {

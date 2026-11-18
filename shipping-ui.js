@@ -142,8 +142,12 @@
       quote = result;
       expiry = setTimeout(() => invalidate('La cotización venció. Consulta el costo nuevamente.'),
         Date.parse(result.expires_at) - Date.now());
-      shippingStatus.textContent = 'Envío TARSI: ' + money(quote.customer_price) +
-        (quote.estimated_days ? ' · Tránsito estimado: ' + quote.estimated_days + ' días hábiles.' : '.');
+      const carrier = [quote.carrier_name, quote.carrier_service].filter(Boolean).join(' ');
+      shippingStatus.textContent = [
+        'Envío TARSI: ' + money(quote.customer_price),
+        carrier,
+        quote.estimated_days && 'Tránsito estimado: ' + quote.estimated_days + ' días hábiles'
+      ].filter(Boolean).join(' · ') + '.';
     } catch (error) {
       if (error.name !== 'AbortError' && shippingLookup === controller) shippingStatus.textContent = error.message;
     } finally {
