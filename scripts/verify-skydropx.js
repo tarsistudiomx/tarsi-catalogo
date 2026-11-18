@@ -13,7 +13,9 @@ const samples = [
   {quantity: 1, destination: {country_code: 'MX', postal_code: '01000', area_level1: 'Ciudad de México',
     area_level2: 'Álvaro Obregón', area_level3: 'San Ángel'}},
   {quantity: 4, destination: {country_code: 'MX', postal_code: '64000', area_level1: 'Nuevo León',
-    area_level2: 'Monterrey', area_level3: 'Monterrey Centro'}}
+    area_level2: 'Monterrey', area_level3: 'Monterrey Centro'}},
+  {quantity: 1, destination: {country_code: 'MX', postal_code: '76090', area_level1: 'Querétaro',
+    area_level2: 'Querétaro', area_level3: 'Colinas del Cimatario'}}
 ];
 
 let candidates;
@@ -29,10 +31,19 @@ const fetcher = async (url, options) => {
       (data.included ?? []).filter(row => row.type === 'rate');
     candidates = usableRates(rows);
     if (data.is_completed === true || data.status === 'is_completed' || data.data?.attributes?.status === 'is_completed') {
-      console.log('TARSI_VERIFY_CARRIERS ' + JSON.stringify([...new Set(rows.map(row => {
-        const code = (row.attributes ?? row).provider_name;
-        return typeof code === 'string' && /^[\w-]{1,30}$/.test(code) ? code : 'unknown';
-      }))]));
+      const safeCode = value => typeof value === 'string' && /^[\w-]{1,100}$/.test(value) ? value : null;
+      console.log('TARSI_VERIFY_CARRIERS ' + JSON.stringify(rows.map(row => {
+        const rate = row.attributes ?? row;
+        return {
+          carrier: safeCode(rate.provider_name),
+          service: safeCode(rate.provider_service_code),
+          success: rate.success, status: safeCode(rate.status), currency: safeCode(rate.currency_code),
+          total: /^\d{1,8}(\.\d{1,2})?$/.test(String(rate.total)) ? rate.total : null,
+          office: rate.office_delivery, verifyOrigin: rate.requires_origin_verification,
+          reasons: Array.isArray(rate.error_messages) ? rate.error_messages.map(e =>
+            [e.error_type, e.error_category, e.error_code, e.module].map(safeCode)) : Object.keys(rate.error_messages ?? {}).map(safeCode)
+        };
+      })));
     }
   }
   return response;
@@ -45,16 +56,22 @@ const fetcher = async (url, options) => {
   const quote = createSkydropx({fetcher});
   for (const {quantity, destination} of samples) {
     candidates = undefined;
-    const result = await quote(origin, destination, quantity);
-    const rate = candidates?.find(candidate => candidate.id === result.rateId);
-    assert.ok(rate && allowed.includes(result.carrier.toLowerCase()));
-    assert.ok(result.service && result.quotationId);
-    const expected = Math.ceil(Math.max(rate.cents + 3000, rate.cents * 6 / 5) / 1000) * 10;
-    assert.equal(result.customerPrice, expected);
-    console.log('TARSI_VERIFY_RATE ' + JSON.stringify({
-      postal: destination.postal_code, quantity, carrier: result.carrier, service: result.service,
-      carrier_mxn: rate.cents / 100, price_mxn: result.customerPrice, days: result.days
-    }));
+    console.log('TARSI_VERIFY_SAMPLE ' + destination.postal_code + ' ' + quantity);
+    try {
+      const result = await quote(origin, destination, quantity);
+      const rate = candidates?.find(candidate => candidate.id === result.rateId);
+      assert.ok(rate && allowed.includes(result.carrier.toLowerCase()));
+      assert.ok(result.service && result.quotationId);
+      const expected = Math.ceil(Math.max(rate.cents + 3000, rate.cents * 6 / 5) / 1000) * 10;
+      assert.equal(result.customerPrice, expected);
+      console.log('TARSI_VERIFY_RATE ' + JSON.stringify({
+        postal: destination.postal_code, quantity, carrier: result.carrier, service: result.service,
+        carrier_mxn: rate.cents / 100, price_mxn: result.customerPrice, days: result.days
+      }));
+    } catch (error) {
+      console.error('TARSI_VERIFY_SAMPLE_ERROR ' + destination.postal_code + ' ' + (error.code || error.name));
+      process.exitCode = 1;
+    }
   }
 })().catch(error => {
   console.error('TARSI_VERIFY_ERROR ' + (error.code || error.name));
