@@ -40,8 +40,9 @@ function usableRates(rows) {
     const rate = row?.attributes ?? row;
     const cents = totalInCentavos(rate?.total);
     const carrier = typeof rate?.provider_name === 'string' && carriers.get(rate.provider_name.trim().toLowerCase());
+    // office_delivery indicates that the rate also supports optional collection at a branch.
     if (!carrier || !cents || typeof row.id !== 'string' || !row.id || rate.success !== true ||
-      rate.currency_code !== 'MXN' || !available.has(rate.status) || rate.office_delivery === true ||
+      rate.currency_code !== 'MXN' || !available.has(rate.status) ||
       rate.requires_origin_verification === true) return [];
     const service = [rate.provider_service_name, rate.provider_service_code]
       .find(value => typeof value === 'string' && value.trim());
