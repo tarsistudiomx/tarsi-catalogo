@@ -21,7 +21,9 @@ function skydropx(polls, onFetch = () => {}) {
 
 test('POST /shipping-quote espera disponibilidad, valida origen/destino y elige la más económica', async () => {
   const polls = [dummyResponse({is_completed: false, rates: [rate]}), dummyResponse({}, 429),
-    dummyResponse({is_completed: true, rates: [{...rate, id: 'r-2', total: 129}, rate]})];
+    dummyResponse({is_completed: true, rates: [
+      {...rate, id: 'r-cheap', provider_name: 'otra', total: 1}, {...rate, id: 'r-2', total: 129}, rate
+    ]})];
   const sky = skydropx(polls, (url, options) => {
     if (url.endsWith('/oauth/token')) assert.equal(options.body.get('grant_type'), 'client_credentials');
     if (url.endsWith('/quotations')) {
@@ -29,6 +31,7 @@ test('POST /shipping-quote espera disponibilidad, valida origen/destino y elige 
       assert.equal(quotation.address_from.area_level3, 'Plazas del Sol 2a Sección');
       assert.equal(quotation.address_to.area_level3, 'San Ángel');
       assert.equal(quotation.parcels[0].weight, 1.4);
+      assert.deepEqual(quotation.requested_carriers, ['fedex', 'estafeta', 'paquetexpress', 'dhl']);
     }
   });
   const handler = shipping.createHandler({env, catalog: mockCatalog(), sky});
@@ -36,6 +39,9 @@ test('POST /shipping-quote espera disponibilidad, valida origen/destino y elige 
   assert.equal(polls.length, 0);
   assert.equal(result.status, 200);
   assert.equal(result.data.customer_price, 140);
+  assert.equal(result.data.carrier_name, 'FedEx');
+  assert.equal(result.data.carrier_service, 'Priority');
+  assert.equal(result.data.quotation_id, 'q-1');
   assert.equal(unpack(await handler(event('POST', {body: {quantity: 31, destination}}))).status, 400);
   assert.equal(unpack(await handler(event('POST', {body: {quantity: 4,
     destination: {...destination, area_level3: 'Inventada'}}}))).status, 422);
@@ -51,6 +57,7 @@ test('JSON:API, errores de autenticación, tarifas vacías, no válidas, tiempo 
   for (const [payload, code] of [
     [{is_completed: true, rates: []}, 'RATES_EMPTY'],
     [{is_completed: true, rates: [{...rate, total: null, amount: '50'}]}, 'RATES_UNUSABLE'],
+    [{is_completed: true, rates: [{...rate, provider_name: 'otra', total: '50'}]}, 'RATES_UNUSABLE'],
     [{is_completed: true}, 'SKYDROPX_RESPONSE'], [{status: 'failed'}, 'QUOTE_FAILED'],
     [{is_completed: false}, 'QUOTE_TIMEOUT']
   ]) {

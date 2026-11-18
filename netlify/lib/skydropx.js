@@ -5,6 +5,12 @@ const {HttpError} = require('./http');
 
 const hosts = {production: 'https://api-pro.skydropx.com', sandbox: 'https://sb-pro.skydropx.com'};
 const available = new Set(['approved', 'price_found_internal', 'price_found_external']);
+const carriers = new Map([
+  ['fedex', 'FedEx'],
+  ['estafeta', 'Estafeta'],
+  ['paquetexpress', 'Paquetexpress'],
+  ['dhl', 'DHL']
+]);
 const parcelFor = quantity => ({length: 30, width: 25, height: 4 * quantity, weight: 350 * quantity / 1000});
 
 function totalInCentavos(total) {
@@ -33,10 +39,16 @@ function usableRates(rows) {
   return rows.flatMap(row => {
     const rate = row?.attributes ?? row;
     const cents = totalInCentavos(rate?.total);
-    if (!cents || typeof row.id !== 'string' || !row.id || rate.success !== true ||
+    const carrier = typeof rate?.provider_name === 'string' && carriers.get(rate.provider_name.trim().toLowerCase());
+    if (!carrier || !cents || typeof row.id !== 'string' || !row.id || rate.success !== true ||
       rate.currency_code !== 'MXN' || !available.has(rate.status) || rate.office_delivery === true ||
       rate.requires_origin_verification === true) return [];
-    return [{id: row.id, cents, days: Number.isInteger(rate.days) && rate.days > 0 ? rate.days : null}];
+    const service = [rate.provider_service_name, rate.provider_service_code]
+      .find(value => typeof value === 'string' && value.trim());
+    return [{
+      id: row.id, cents, carrier, service: service?.trim().replace(/\s+/g, ' ').slice(0, 120) ?? null,
+      days: Number.isInteger(rate.days) && rate.days > 0 ? rate.days : null
+    }];
   }).sort((a, b) => a.cents - b.cents || (a.days ?? Infinity) - (b.days ?? Infinity));
 }
 
@@ -107,7 +119,10 @@ function createSkydropx({env = process.env, fetcher = fetch, delay = sleep, now 
 
     const created = await authorized('/api/v1/quotations', {
       method: 'POST',
-      body: JSON.stringify({quotation: {address_from: origin, address_to: destination, parcels: [parcelFor(quantity)]}})
+      body: JSON.stringify({quotation: {
+        address_from: origin, address_to: destination, parcels: [parcelFor(quantity)],
+        requested_carriers: [...carriers.keys()]
+      }})
     }, 'CREATE');
     const id = created?.id ?? created?.quotation_id ?? created?.data?.id ?? created?.data?.attributes?.quotation_id;
     if (typeof id !== 'string' || !id) {
@@ -132,8 +147,10 @@ function createSkydropx({env = process.env, fetcher = fetch, delay = sleep, now 
       if (!completed) continue;
       if (!rows) throw new HttpError(502, 'SKYDROPX_RESPONSE', 'Skydropx devolvió una cotización inválida.');
       const selected = usableRates(rows)[0];
-      if (selected) return {quotationId: id, rateId: selected.id,
-        customerPrice: shippingPrice(selected.cents), days: selected.days};
+      if (selected) return {
+        quotationId: id, rateId: selected.id, carrier: selected.carrier, service: selected.service,
+        customerPrice: shippingPrice(selected.cents), days: selected.days
+      };
       console.warn('Skydropx sin tarifa válida', {
         quotationId: id, count: rows.length,
         statuses: [...new Set(rows.map(row => (row?.attributes ?? row)?.status))].slice(0, 12)
