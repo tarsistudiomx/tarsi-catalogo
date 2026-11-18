@@ -26,12 +26,12 @@ test('peso de 350 g y envío exacto con umbrales de margen y de redondeo', () =>
     [140, 150, 160, 180, 190, 200, 240, 300]);
 });
 
-test('tarifas utilizables: solo MXN, servicio a domicilio, precio total y estados oficiales', () => {
+test('tarifas utilizables: solo MXN, precio total y estados oficiales', () => {
   const rejected = [null, 0, -12, '', 'NaN', Infinity, true, '0x6E', '1e3', '100,000', '15.003']
     .map(total => ({...rate, total, amount: '9.00'}));
   rejected.push(...['no_coverage', 'pending', 'coverage_checked', 'tariff_price_not_found']
     .map(status => ({...rate, status})),
-  {...rate, currency_code: 'USD'}, {...rate, success: false}, {...rate, office_delivery: true},
+  {...rate, currency_code: 'USD'}, {...rate, success: false},
   {...rate, requires_origin_verification: true});
   assert.deepEqual(usableRates(rejected), []);
   assert.deepEqual(usableRates([rate, {...rate, id: 'r-2', status: 'approved', total: 105},
@@ -43,7 +43,7 @@ test('solo acepta el código oficial de las cuatro paqueterías y conserva el se
   const rows = [
     {...rate, id: 'cheap', provider_name: 'otro', provider_display_name: 'FedEx', total: 1},
     {...rate, id: 'missing', provider_name: undefined, total: 1},
-    {...rate, id: 'dhl', provider_name: ' DHL ', provider_service_name: 'Express\nMéxico', total: 100},
+    {...rate, id: 'dhl', provider_name: ' DHL ', provider_service_name: 'Express\nMéxico', total: 100, office_delivery: true},
     {...rate, id: 'estafeta', provider_name: 'estafeta', provider_service_name: '', provider_service_code: 'terrestre'},
     {...rate, id: 'paquetexpress', provider_name: 'paquetexpress', total: 110},
     rate

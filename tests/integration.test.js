@@ -22,7 +22,8 @@ function skydropx(polls, onFetch = () => {}) {
 test('POST /shipping-quote espera disponibilidad, valida origen/destino y elige la más económica', async () => {
   const polls = [dummyResponse({is_completed: false, rates: [rate]}), dummyResponse({}, 429),
     dummyResponse({is_completed: true, rates: [
-      {...rate, id: 'r-cheap', provider_name: 'otra', total: 1}, {...rate, id: 'r-2', total: 129}, rate
+      {...rate, id: 'r-cheap', provider_name: 'otra', total: 1}, {...rate, id: 'r-2', total: 129},
+      {...rate, office_delivery: true}
     ]})];
   const sky = skydropx(polls, (url, options) => {
     if (url.endsWith('/oauth/token')) assert.equal(options.body.get('grant_type'), 'client_credentials');
