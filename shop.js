@@ -6,7 +6,7 @@
     ['Gojo Satoru', 'ANIME', 'playera-03.png'], ['Rayo McQueen', 'CINE / AUTOS', 'playera-04.png'],
     ['Sally', 'CINE / AUTOS', 'playera-05.png'], ['Majin Vegeta', 'ANIME', 'playera-06.png'],
     ['Goku Ultra Instinto', 'ANIME', 'playera-07.png'], ['Amazing Fantasy', 'CÓMICS', 'playera-08.png'],
-    ['Miles Morales', 'CÓMICS'], ['Spider-Man clásico', 'CÓMICS', 'playera-10.png'],
+    ['Miles Morales', 'CÓMICS', 'playera-09.png'], ['Spider-Man clásico', 'CÓMICS', 'playera-10.png'],
     ['Spider-Man emblema', 'CÓMICS', 'playera-11.png'], ['Checo Pérez · Never Give Up', 'CINE / AUTOS', 'playera-12.png'],
     ['Spider-Man urbano', 'CÓMICS', 'playera-13.png']
   ].map(([name, category, photo], id) => ({
