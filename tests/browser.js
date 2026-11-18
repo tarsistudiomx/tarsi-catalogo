@@ -82,6 +82,13 @@ test('Chromium móvil: catálogo, carrito mixto, dirección canónica, costo y p
     assert.equal(await page.locator('.product').count(), 12);
     const logoLoaded = await page.locator('.logo').evaluate(image => image.complete && image.naturalWidth > 0);
     assert.equal(logoLoaded, true);
+    await page.locator('button[data-open="0"]').click();
+    await page.click('#detailZoom');
+    assert.equal(await page.getAttribute('#detailZoom', 'aria-pressed'), 'true');
+    assert.equal(await page.locator('#detailImg.is-zoomed').count(), 1);
+    await page.click('#next');
+    assert.equal(await page.getAttribute('#detailZoom', 'aria-pressed'), 'false');
+    await page.click('#detailClose');
     await selectProduct(page, 0, 'S', 2);
     await selectProduct(page, 4, 'XL', 2);
     await page.click('#navCart');
@@ -106,9 +113,20 @@ test('Chromium móvil: catálogo, carrito mixto, dirección canónica, costo y p
     await page.getByRole('button', {name: 'Restar una'}).first().click();
     await page.click('#quoteShipping');
     await waitText(page, '#totals .final', '$1,538 MXN');
-    await page.evaluate(() => { window.open = url => { window.orderMail = url; }; });
+    await page.evaluate(() => {
+      window.open = url => { window.webOrderMail = url; };
+      HTMLAnchorElement.prototype.click = function () { window.orderMail = this.href; };
+    });
     await page.click('#emailOrder');
-    const draft = await page.evaluate(() => new URL(window.orderMail).searchParams.get('body'));
+    const mail = new URL(await page.evaluate(() => window.orderMail));
+    assert.equal(mail.protocol, 'mailto:');
+    assert.equal(mail.pathname, 'tarsi.studiomx@gmail.com');
+    assert.match(mail.searchParams.get('subject'), /Cliente de prueba/);
+    const draft = mail.searchParams.get('body');
+    await page.click('#webEmailOrder');
+    const gmail = new URL(await page.evaluate(() => window.webOrderMail));
+    assert.equal(gmail.origin, 'https://mail.google.com');
+    assert.equal(gmail.searchParams.get('body'), draft);
     assert.match(draft, /COLONIA: San Ángel/);
     assert.match(draft, /ENVÍO: \$140 MXN/);
     assert.match(draft, /PAQUETERÍA: FedEx · Priority/);
