@@ -97,7 +97,7 @@ window.TARSI_SHIPPING_API_URL = "https://tarsi-skydropx.netlify.app/.netlify/fun
      if(!Number.isFinite(data.customer_price)||data.customer_price<=0)throw Error('Respuesta inválida');
      if(sig!==signature())throw Error('Cambió el pedido durante la cotización');
      quote=data;quoteSignature=sig;status.textContent='Envío TARSI: '+money(data.customer_price)+(data.estimated_days?' · Entrega estimada '+data.estimated_days+' días hábiles':'')+'.';refresh();
-   }catch(e){quote=null;quoteSignature='';status.textContent=e.message==='API_NO_CONFIGURADA'?'La cotización automática estará disponible al activar la conexión segura de Skydropx.':'No se pudo cotizar el envío. TARSI confirmará el precio antes del pago.';refresh()}
+   }catch(e){quote=null;quoteSignature='';status.textContent='Error de cotización: '+String(e&&e.message||'Error desconocido').slice(0,180)+'. No se ha cobrado ningún pago.';refresh()}
    finally{btn.disabled=false}
  });
  ['buyer','city','street','neighborhood','state','zipCode','phone','delivery'].forEach(id=>$(id).addEventListener('input',reset));
