@@ -2,12 +2,12 @@
   'use strict';
 
   const products = [
-    ['The Amazing Spider-Man', 'CÓMICS'], ['Goku y Shenlong', 'ANIME'],
+    ['The Amazing Spider-Man', 'CÓMICS', 'playera-01.png'], ['Goku y Shenlong', 'ANIME', 'playera-02.png'],
     ['Gojo Satoru', 'ANIME'], ['Rayo McQueen', 'CINE / AUTOS'],
     ['Sally', 'CINE / AUTOS'], ['Majin Vegeta', 'ANIME'],
-    ['Goku Ultra Instinto', 'ANIME'], ['Amazing Fantasy', 'CÓMICS'],
-    ['Miles Morales', 'CÓMICS'], ['Spider-Man clásico', 'CÓMICS'],
-    ['Spider-Man emblema', 'CÓMICS', 'playera-11.png'], ['Checo Pérez · Never Give Up', 'CINE / AUTOS']
+    ['Goku Ultra Instinto', 'ANIME', 'playera-07.png'], ['Amazing Fantasy', 'CÓMICS', 'playera-08.png'],
+    ['Miles Morales', 'CÓMICS'], ['Spider-Man clásico', 'CÓMICS', 'playera-10.png'],
+    ['Spider-Man emblema', 'CÓMICS', 'playera-11.png'], ['Checo Pérez · Never Give Up', 'CINE / AUTOS', 'playera-12.png']
   ].map(([name, category, photo], id) => ({
     name, category, image: 'assets/' + (photo ?? 'playera-' + String(id + 1).padStart(2, '0') + '.jpg')
   }));
