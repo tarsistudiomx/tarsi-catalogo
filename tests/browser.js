@@ -79,7 +79,11 @@ test('Chromium móvil: catálogo, carrito mixto, dirección canónica, costo y p
     const errors = [];
     page.on('pageerror', error => errors.push(error.message));
     await page.goto(base);
-    assert.equal(await page.locator('.product').count(), 12);
+    assert.equal(await page.locator('.product').count(), 13);
+    const urban = page.locator('.product').filter({hasText: 'Spider-Man urbano'});
+    await urban.scrollIntoViewIfNeeded();
+    await urban.locator('img').evaluate(image => image.decode());
+    assert.match(await urban.locator('img').getAttribute('src'), /playera-13\.png$/);
     const logoLoaded = await page.locator('.logo').evaluate(image => image.complete && image.naturalWidth > 0);
     assert.equal(logoLoaded, true);
     await page.locator('button[data-open="0"]').click();
