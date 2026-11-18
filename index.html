@@ -59,40 +59,40 @@ $('filters').addEventListener('click',e=>{const b=e.target.closest('[data-filter
 let observer;if('IntersectionObserver'in window){observer=new IntersectionObserver(entries=>entries.forEach(e=>{if(e.isIntersecting){e.target.classList.add('visible');observer.unobserve(e.target)}}),{threshold:.08})}function observe(){document.querySelectorAll('.reveal:not(.visible)').forEach(x=>observer?observer.observe(x):x.classList.add('visible'))}draw();updateBar();observe();
 </script><script id="shipping-config">
 // Cuando Netlify entregue la URL del sitio, cambiar únicamente el dominio aquí.
-window.TARSI_SHIPPING_API_URL = "https://TU-SITIO.netlify.app/api/shipping/quote";
+window.TARSI_SHIPPING_API_URL = "https://tarsi-skydropx.netlify.app/.netlify/functions/shipping-quote";
 </script><script id="shipping-integration">
 (function(){
  const $=id=>document.getElementById(id),btn=$('quoteShipping'),status=$('shippingStatus');
  let quote=null,quoteSignature='';
  const money=n=>'$'+Number(n).toLocaleString('es-MX',{maximumFractionDigits:2})+' MXN';
- const signature=()=>JSON.stringify({cart:window.cart,city:$('city').value,street:$('street').value,neighborhood:$('neighborhood').value,state:$('state').value,zip:$('zipCode').value,delivery:$('delivery').value});
+ const signature=()=>JSON.stringify({cart:cart,city:$('city').value,street:$('street').value,neighborhood:$('neighborhood').value,state:$('state').value,zip:$('zipCode').value,delivery:$('delivery').value});
  const validQuote=()=>quote&&quoteSignature===signature()&&(!quote.expires_at||Date.parse(quote.expires_at)>Date.now());
  function reset(){quote=null;quoteSignature='';status.textContent='Actualizaste tu pedido o dirección. Cotiza nuevamente.';refresh()}
  function refresh(){
    const row=$('shippingTotalRow');if(row)row.remove();
-   const totals=$('totals');if(!totals||!window.cart||!window.cart.length)return;
+   const totals=$('totals');if(!totals||!cart||!cart.length)return;
    const shipping=document.createElement('div');shipping.id='shippingTotalRow';shipping.className='totalrow';
    const label=document.createElement('span');label.textContent='Envío';
    const price=document.createElement('strong');price.textContent=validQuote()?money(quote.customer_price):'Por cotizar';
    shipping.append(label,price);
    const final=totals.lastElementChild;if(final){totals.insertBefore(shipping,final);if(validQuote()){
       const last=final.querySelector('strong')||final.lastElementChild;
-      if(last&&typeof window.pricing==='function'&&typeof window.count==='function')last.textContent=money(window.pricing(window.count())+quote.customer_price);
+      if(last&&typeof pricing==='function'&&typeof count==='function')last.textContent=money(window.pricing(count())+quote.customer_price);
    }}
  }
  const origOrderText=window.orderText;
  if(typeof origOrderText==='function')window.orderText=function(){
    const a=origOrderText(),valid=validQuote();
-   return a+'\nCOLONIA: '+$('neighborhood').value.trim()+'\nESTADO: '+$('state').value.trim()+'\nENVÍO TARSI: '+(valid?money(quote.customer_price):'Pendiente de cotización')+'\nTOTAL CON ENVÍO: '+(valid?money(window.pricing(window.count())+quote.customer_price):'Por confirmar');
+   return a+'\nCOLONIA: '+$('neighborhood').value.trim()+'\nESTADO: '+$('state').value.trim()+'\nENVÍO TARSI: '+(valid?money(quote.customer_price):'Pendiente de cotización')+'\nTOTAL CON ENVÍO: '+(valid?money(window.pricing(count())+quote.customer_price):'Por confirmar');
  };
  btn.addEventListener('click',async()=>{
    if($('delivery').value!=='Envío nacional'){status.textContent='Selecciona «Envío nacional» para cotizar.';return}
    const destination={postal_code:$('zipCode').value.trim(),area_level1:$('state').value.trim(),area_level2:$('city').value.trim(),area_level3:$('neighborhood').value.trim()};
    if(!/^\d{5}$/.test(destination.postal_code)||!destination.area_level1||!destination.area_level2||!destination.area_level3){status.textContent='Completa código postal, estado, municipio y colonia.';return}
-   if(!window.cart||!window.cart.length){status.textContent='Agrega al menos una playera.';return}
+   if(!cart||!cart.length){status.textContent='Agrega al menos una playera.';return}
    const sig=signature();btn.disabled=true;status.textContent='Buscando el mejor envío disponible…';
    try{
-     const response=await fetch((window.TARSI_SHIPPING_API_URL||'/api/shipping/quote'),{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({destination,quantity:window.count()})});
+     const response=await fetch((window.TARSI_SHIPPING_API_URL||'/api/shipping/quote'),{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({destination,quantity:count()})});
      const data=await response.json();if(!response.ok)throw Error(data.error||'No fue posible cotizar');
      if(!Number.isFinite(data.customer_price)||data.customer_price<=0)throw Error('Respuesta inválida');
      if(sig!==signature())throw Error('Cambió el pedido durante la cotización');
@@ -101,7 +101,7 @@ window.TARSI_SHIPPING_API_URL = "https://TU-SITIO.netlify.app/api/shipping/quote
    finally{btn.disabled=false}
  });
  ['buyer','city','street','neighborhood','state','zipCode','phone','delivery'].forEach(id=>$(id).addEventListener('input',reset));
- const target=$('totals');new MutationObserver(()=>{if(!target.querySelector('#shippingTotalRow')&&window.cart&&window.cart.length)refresh()}).observe(target,{childList:true});
+ const target=$('totals');new MutationObserver(()=>{if(!target.querySelector('#shippingTotalRow')&&cart&&cart.length)refresh()}).observe(target,{childList:true});
  window.TARSI_shipping={getQuote:()=>validQuote()?quote:null};
 })();
 </script></body></html>
