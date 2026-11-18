@@ -20,32 +20,83 @@
 <footer class="footer"><div class="eyebrow">TARSI® / MADE TO BE WORN</div><h2>WEAR WHAT<br>YOU LOVE.</h2><p>¿Tienes alguna duda? <a href="https://www.instagram.com/tarsi.mx/" target="_blank" rel="noopener">Escríbenos en Instagram</a>.</p></footer>
 <div class="bottom"><div><small id="barCount">0 PIEZAS EN TU CARRITO</small><div><strong id="barTotal">$0 MXN</strong></div></div><button class="pill" id="barCart">VER MI CARRITO</button></div><button class="guide-fab" id="guideOpen">GUÍA DE COMPRA</button>
 <div class="overlay" id="detailOverlay" role="dialog" aria-modal="true" aria-label="Detalle de playera"><div class="modal"><button class="close" id="detailClose" aria-label="Cerrar detalle">CERRAR</button><div class="detail"><div class="detail-photo"><img id="detailImg" alt=""><button class="move prev" id="prev" aria-label="Playera anterior">ANT.</button><button class="move next" id="next" aria-label="Siguiente playera">SIG.</button></div><div class="detail-data"><div class="tag" id="detailCategory"></div><h2 id="detailName"></h2><div class="cost">$399 MXN</div><div class="fieldrow"><label>Talla<select id="detailSize"><option>XS</option><option selected>S</option><option>M</option><option>L</option><option>XL</option><option>XXL</option></select></label><label>Piezas<select id="detailQty"></select></label></div><button class="add" id="detailAdd">AGREGAR AL CARRITO</button><p class="transparent-note">Combina diseños y tallas. El descuento se aplica automáticamente al carrito.</p></div></div></div></div>
-<div class="overlay" id="cartOverlay" role="dialog" aria-modal="true" aria-label="Carrito de compras"><div class="modal cart-modal"><button class="close" id="cartClose">CERRAR</button><div class="eyebrow" style="color:var(--green)">02 / TU SELECCIÓN</div><h2>TU CARRITO.</h2><div id="cartItems"></div><div class="totals" id="totals"></div><div class="checkout"><label>Tu nombre<input id="buyer" placeholder="Nombre" autocomplete="name"></label><label>Ciudad / municipio<input id="city" placeholder="Ej. Querétaro"></label><label class="wide">Calle y número<input id="street" placeholder="Calle, número exterior e interior" autocomplete="street-address"></label><label>Colonia<input id="neighborhood" placeholder="Colonia" autocomplete="address-level3"></label><label>Estado<input id="state" placeholder="Estado" autocomplete="address-level1"></label><label>Código postal<input id="zipCode" placeholder="5 dígitos" inputmode="numeric" maxlength="5" autocomplete="postal-code"></label><label>Teléfono de contacto<input id="phone" placeholder="10 dígitos" inputmode="tel" autocomplete="tel"></label><label class="wide">¿Cómo prefieres recibirlo?<select id="delivery"><option value="Por confirmar">Por confirmar</option><option value="Entrega en Querétaro">Entrega en Querétaro</option><option value="Envío nacional">Envío nacional</option></select></label></div><div class="shipping-panel" id="shippingPanel">
+<div class="overlay" id="cartOverlay" role="dialog" aria-modal="true" aria-label="Carrito de compras"><div class="modal cart-modal"><button class="close" id="cartClose">CERRAR</button><div class="eyebrow" style="color:var(--green)">02 / TU SELECCIÓN</div><h2>TU CARRITO.</h2><div id="cartItems"></div><div class="totals" id="totals"></div><div class="checkout"><label>Tu nombre<input id="buyer" placeholder="Nombre" autocomplete="name"></label><label>Código postal<input id="zipCode" placeholder="5 dígitos" inputmode="numeric" maxlength="5" autocomplete="postal-code"></label><label class="wide">Calle y número<input id="street" placeholder="Calle, número exterior e interior" autocomplete="street-address"></label><label class="wide">Colonia<input id="neighborhood" list="postalColonies" placeholder="Ingresa primero tu código postal" autocomplete="off" disabled><datalist id="postalColonies"></datalist></label><label>Ciudad / municipio<input id="city" autocomplete="address-level2" readonly></label><label>Estado<input id="state" autocomplete="address-level1" readonly></label><div id="postalStatus" class="transparent-note wide" role="status"></div><label>Teléfono de contacto<input id="phone" placeholder="10 dígitos" inputmode="tel" autocomplete="tel"></label><label class="wide">¿Cómo prefieres recibirlo?<select id="delivery"><option value="Por confirmar">Por confirmar</option><option value="Entrega en Querétaro">Entrega en Querétaro</option><option value="Envío nacional">Envío nacional</option></select></label></div><div class="shipping-panel" id="shippingPanel">
   <div class="shipping-title">COTIZA TU ENVÍO.</div>
   <p>Completa tu dirección y código postal para consultar el costo final de entrega.</p>
   <button type="button" id="quoteShipping">COTIZAR ENVÍO</button>
   <div id="shippingStatus" role="status" aria-live="polite">Aún no se ha cotizado el envío.</div>
-</div><p class="transparent-note" id="shippingQuote">El precio final del envío se añadirá al total cuando la cotización esté disponible.</p><div class="actions"><button class="primary" id="emailOrder">ENVIAR POR CORREO</button><button id="copyOrder">COPIAR PEDIDO</button><button id="shareOrder">COMPARTIR PEDIDO</button><button id="instagramOrder">PEDIR POR INSTAGRAM</button></div><p class="transparent-note">Gmail abrirá un borrador listo para revisar y enviar. El costo de envío se confirmará antes del pago. Los cobros en línea todavía no están activados.</p></div></div>
+</div><p class="transparent-note" id="shippingQuote">El envío se añadirá al total cuando haya una cotización vigente.</p><div class="actions"><button class="primary" id="emailOrder">ENVIAR POR CORREO</button><button id="copyOrder">COPIAR PEDIDO</button><button id="shareOrder">COMPARTIR PEDIDO</button><button id="instagramOrder">PEDIR POR INSTAGRAM</button></div><p class="transparent-note">Gmail abrirá un borrador listo para revisar y enviar. También puedes solicitar el pedido por correo y acordar el pago con TARSI.</p></div></div>
 <div class="overlay" id="guideOverlay" role="dialog" aria-modal="true" aria-label="Guía de compra"><div class="modal guide-modal"><button class="close" id="guideClose">CERRAR</button><div class="eyebrow" style="color:var(--red)">¿PRIMERA VEZ EN TARSI?</div><h2>ASÍ DE FÁCIL.</h2><div class="help-steps"><div><b>01 / EXPLORA</b><br>Abre el diseño que te guste para verlo en grande.</div><div><b>02 / PERSONALIZA</b><br>Selecciona talla y piezas. Agrégalas al carrito.</div><div><b>03 / CONFIRMA</b><br>Revisa el total y envíanos tu pedido.</div></div><h3>RESPUESTAS RÁPIDAS.</h3><div id="faqList"></div><button class="add" id="guideShop">VER PLAYERAS</button></div></div><div class="toast" id="toast" role="status"></div>
-<script>
-const products=[{"name": "Spider-Man clásico", "category": "CÓMICS", "image": "assets/playera-01.jpg"}, {"name": "Goku y Shenlong", "category": "ANIME", "image": "assets/playera-02.jpg"}, {"name": "Gojo Satoru", "category": "ANIME", "image": "assets/playera-03.jpg"}, {"name": "Rayo McQueen", "category": "CINE / AUTOS", "image": "assets/playera-04.jpg"}, {"name": "Sally", "category": "CINE / AUTOS", "image": "assets/playera-05.jpg"}, {"name": "Vegeta", "category": "ANIME", "image": "assets/playera-06.jpg"}, {"name": "Goku Black", "category": "ANIME", "image": "assets/playera-07.jpg"}, {"name": "Amazing Fantasy", "category": "CÓMICS", "image": "assets/playera-08.jpg"}, {"name": "Spider-Verse", "category": "CÓMICS", "image": "assets/playera-09.jpg"}, {"name": "Miles Morales", "category": "CÓMICS", "image": "assets/playera-10.jpg"}, {"name": "Spider-Man emblema", "category": "CÓMICS", "image": "assets/playera-11.jpg"}, {"name": "Spider-Man urbano", "category": "CÓMICS", "image": "assets/playera-12.jpg"}];
+<script src="shop.js"></script><script>
+const {products, maxQuantity, unitPrice, subtotal: pricing, count: quantityOf, isLine} = TarsiShop;
 const $=id=>document.getElementById(id);const money=n=>'$'+n.toLocaleString('es-MX')+' MXN';
-const storeKey='tarsi-cart-v4';let cart=[];try{const v=JSON.parse(localStorage.getItem(storeKey)||'[]');if(Array.isArray(v))cart=v.filter(x=>products[x.id]&&x.qty>0)}catch(e){}
+const storeKey='tarsi-cart-v4';let cart=[];try{const v=JSON.parse(localStorage.getItem(storeKey)||'[]');if(Array.isArray(v))cart=v.filter(isLine).map(({id,size,qty})=>({id,size,qty}))}catch(e){}
 let active=0;let filter='TODOS';let previousFocus=null;
-const pricing=n=>Math.floor(n/3)*999+[0,399,699][n%3];const count=()=>cart.reduce((n,x)=>n+x.qty,0);const save=()=>{try{localStorage.setItem(storeKey,JSON.stringify(cart))}catch(e){}updateBar()};
+const count = () => quantityOf(cart);
+const save = () => {
+  try { localStorage.setItem(storeKey, JSON.stringify(cart)); } catch {}
+  updateBar();
+  document.dispatchEvent(new Event('tarsi-cart-update'));
+};
 function toast(t){$('toast').textContent=t;$('toast').style.display='block';clearTimeout(toast.timer);toast.timer=setTimeout(()=>$('toast').style.display='none',2400)}
 function open(id){previousFocus=document.activeElement;$(id).classList.add('show');document.body.style.overflow='hidden';$(id).querySelector('.close').focus()}
 function close(id){$(id).classList.remove('show');document.body.style.overflow='';previousFocus?.focus?.()}
 function draw(){const list=products.map((p,i)=>({...p,id:i})).filter(p=>filter==='TODOS'||p.category===filter);$('grid').innerHTML=list.map(p=>`<article class="product reveal"><div class="photo" role="button" tabindex="0" data-open="${p.id}" aria-label="Ver ${p.name} en grande"><img src="${p.image}" alt="Playera ${p.name}" loading="lazy"><span class="view">VER DISEÑO</span></div><div class="kicker">TARSI® / ${p.category}</div><h3>${p.name}</h3><div class="price">$399 MXN</div><button class="mini" data-open="${p.id}">VER Y ELEGIR TALLA</button></article>`).join('');document.querySelectorAll('[data-open]').forEach(b=>{b.addEventListener('click',()=>showProduct(+b.dataset.open));b.addEventListener('keydown',e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();showProduct(+b.dataset.open)}})});observe()}
 function showProduct(i,first=true){active=(i+products.length)%products.length;const p=products[active];$('detailImg').src=p.image;$('detailImg').alt='Playera '+p.name;$('detailName').textContent=p.name;$('detailCategory').textContent='TARSI® / '+p.category;$('detailQty').value='1';if(first)open('detailOverlay')}
-function addItem(id,size,qty){const x=cart.find(x=>x.id===id&&x.size===size);if(x)x.qty+=qty;else cart.push({id,size,qty});save();toast(qty===1?'PLAYERA AGREGADA AL CARRITO':qty+' PLAYERAS AGREGADAS')}
+function addItem(id,size,qty){if(count()+qty>maxQuantity){toast('MÁXIMO 30 PLAYERAS POR PEDIDO');return false}const x=cart.find(x=>x.id===id&&x.size===size);if(x)x.qty+=qty;else cart.push({id,size,qty});save();toast(qty===1?'PLAYERA AGREGADA AL CARRITO':qty+' PLAYERAS AGREGADAS');return true}
 function updateBar(){const n=count();$('barCount').textContent=n+' '+(n===1?'PIEZA':'PIEZAS')+' EN TU CARRITO';$('barTotal').textContent=money(pricing(n));$('navCart').textContent='CARRITO ('+n+')'}
-function renderCart(){const n=count();$('cartItems').innerHTML=cart.length?cart.map((x,i)=>`<div class="cart-line"><img src="${products[x.id].image}" alt=""><div><b>${products[x.id].name}</b><small>Talla ${x.size} · $399 c/u</small><div class="qtybuttons"><button data-action="minus" data-i="${i}" aria-label="Restar una">−</button><b>${x.qty}</b><button data-action="plus" data-i="${i}" aria-label="Sumar una">+</button></div><button class="remove" data-action="remove" data-i="${i}">ELIMINAR</button></div><strong>${money(x.qty*399)}</strong></div>`).join(''):'<p>Tu carrito está vacío. Elige una playera para empezar.</p>';const sub=n*399,total=pricing(n);$('totals').innerHTML=`<div class="totalrow"><span>${n} piezas · precio individual</span><b>${money(sub)}</b></div><div class="totalrow"><span>Descuento por promociones</span><b>− ${money(sub-total)}</b></div><div class="totalrow final"><span>TOTAL</span><span>${money(total)}</span></div><p class="transparent-note">Envío: consultar desglose final. Te confirmamos el costo con tu C.P. y dirección antes de pagar.</p>`;document.querySelectorAll('[data-action]').forEach(b=>b.onclick=()=>{const i=+b.dataset.i;if(b.dataset.action==='plus')cart[i].qty++;if(b.dataset.action==='minus')cart[i].qty--;if(b.dataset.action==='remove'||cart[i]?.qty<=0)cart.splice(i,1);save();renderCart()})}
-function orderText(){const n=count();const name=$('buyer').value.trim()||'Por confirmar';const city=$('city').value.trim()||'Por confirmar';return ['PEDIDO TARSI®','WEAR WHAT YOU LOVE.','',...cart.map(x=>`${products[x.id].name} | Talla ${x.size} | ${x.qty} ${x.qty===1?'pieza':'piezas'} | ${money(x.qty*399)}`),'',`PIEZAS: ${n}`,`SUBTOTAL: ${money(n*399)}`,`DESCUENTO: ${money(n*399-pricing(n))}`,`TOTAL: ${money(pricing(n))}`,'Envío no incluido.','',`NOMBRE: ${name}`,`CIUDAD / ESTADO: ${city}`,`DIRECCIÓN: ${$('street').value.trim()||'Por confirmar'}`,`C.P.: ${$('zipCode').value.trim()||'Por confirmar'}`,`TELÉFONO: ${$('phone').value.trim()||'Por confirmar'}`,`ENTREGA: ${$('delivery').value}`,'','Preparación: 3 a 5 días hábiles después de confirmar el pago.','El pedido se confirma una vez recibido el pago.'].join('\n')}
-function requireCart(){if(count()===0){toast('AGREGA AL MENOS UNA PLAYERA');return false}return true}
+function renderCart() {
+  $('cartItems').innerHTML = cart.length ? cart.map((line, index) => `
+    <div class="cart-line">
+      <img src="${products[line.id].image}" alt="">
+      <div><b>${products[line.id].name}</b><small>Talla ${line.size} · $399 c/u</small>
+        <div class="qtybuttons">
+          <button data-action="minus" data-i="${index}" aria-label="Restar una">−</button>
+          <b>${line.qty}</b>
+          <button data-action="plus" data-i="${index}" aria-label="Sumar una" ${count()>=maxQuantity?'disabled':''}>+</button>
+        </div>
+        <button class="remove" data-action="remove" data-i="${index}">ELIMINAR</button>
+      </div>
+      <strong>${money(line.qty*unitPrice)}</strong>
+    </div>`).join('') : '<p>Tu carrito está vacío. Elige una playera para empezar.</p>';
+  document.dispatchEvent(new Event('tarsi-render-totals'));
+}
+$('cartItems').addEventListener('click', event => {
+  const button = event.target.closest('[data-action]');
+  if (!button) return;
+  const i = Number(button.dataset.i);
+  const {action} = button.dataset;
+  if (action === 'plus' && count() < maxQuantity) cart[i].qty++;
+  if (action === 'minus') cart[i].qty--;
+  if (action === 'remove' || cart[i].qty <= 0) cart.splice(i, 1);
+  save();
+  renderCart();
+});
+function orderText() {
+  const n = count();
+  const quote = window.TarsiShipping.currentQuote();
+  return [
+    'PEDIDO TARSI®', 'WEAR WHAT YOU LOVE.', '',
+    ...cart.map(x => `${products[x.id].name} | Talla ${x.size} | ${x.qty} pieza(s)`),
+    '', `PIEZAS: ${n}`, `SUBTOTAL DE PRENDAS: ${money(pricing(n))}`,
+    `ENVÍO: ${quote ? money(quote.customer_price) : 'Por confirmar'}`,
+    `TOTAL: ${quote ? money(pricing(n) + quote.customer_price) : 'Por confirmar'}`,
+    '', `NOMBRE: ${$('buyer').value.trim() || 'Por confirmar'}`,
+    `MUNICIPIO / ESTADO: ${[$('city').value, $('state').value].filter(Boolean).join(', ') || 'Por confirmar'}`,
+    `DIRECCIÓN: ${$('street').value.trim() || 'Por confirmar'}`,
+    `COLONIA: ${$('neighborhood').value.trim() || 'Por confirmar'}`, `C.P.: ${$('zipCode').value || 'Por confirmar'}`,
+    `TELÉFONO: ${$('phone').value.trim() || 'Por confirmar'}`, `ENTREGA: ${$('delivery').value}`,
+    '', 'Preparación: 3 a 5 días hábiles después de confirmar el pago.'
+  ].join('\n');
+}
+function requireCart() {
+  if (!count()) { toast('AGREGA AL MENOS UNA PLAYERA'); return false; }
+  if ($('delivery').value === 'Envío nacional') return window.TarsiShipping.readyForShipping();
+  return true;
+}
 function copyFallback(text){const a=document.createElement('textarea');a.value=text;a.style.position='fixed';a.style.opacity='0';document.body.appendChild(a);a.select();const ok=document.execCommand('copy');a.remove();return ok}
 $('detailQty').innerHTML=Array.from({length:10},(_,i)=>`<option value="${i+1}">${i+1}</option>`).join('');
-$('detailAdd').onclick=()=>{addItem(active,$('detailSize').value,+$('detailQty').value);close('detailOverlay')};$('detailClose').onclick=()=>close('detailOverlay');$('prev').onclick=()=>showProduct(active-1,false);$('next').onclick=()=>showProduct(active+1,false);
+$('detailAdd').onclick=()=>{if(addItem(active,$('detailSize').value,+$('detailQty').value))close('detailOverlay')};$('detailClose').onclick=()=>close('detailOverlay');$('prev').onclick=()=>showProduct(active-1,false);$('next').onclick=()=>showProduct(active+1,false);
 for(const id of ['barCart','navCart'])$(id).onclick=()=>{renderCart();open('cartOverlay')};$('cartClose').onclick=()=>close('cartOverlay');
 $('emailOrder').onclick=()=>{if(!requireCart())return;const subject=encodeURIComponent('Nuevo pedido TARSI® — '+($('buyer').value.trim()||'Cliente'));window.open('https://mail.google.com/mail/?view=cm&fs=1&to=tarsi.studiomx%40gmail.com&su='+subject+'&body='+encodeURIComponent(orderText()),'_blank','noopener')};
 $('copyOrder').onclick=async()=>{if(!requireCart())return;try{if(navigator.clipboard&&window.isSecureContext)await navigator.clipboard.writeText(orderText());else if(!copyFallback(orderText()))throw Error();toast('PEDIDO COPIADO')}catch(e){toast('NO SE PUDO COPIAR. USA COMPARTIR')}};
@@ -53,55 +104,8 @@ $('shareOrder').onclick=async()=>{if(!requireCart())return;try{if(navigator.shar
 $('instagramOrder').onclick=async()=>{if(!requireCart())return;try{if(navigator.clipboard&&window.isSecureContext)await navigator.clipboard.writeText(orderText());else copyFallback(orderText());toast('PEDIDO COPIADO. PÉGALO EN INSTAGRAM')}catch(e){}window.open('https://www.instagram.com/direct/t/tarsi.mx/','_blank','noopener')};
 $('guideOpen').onclick=()=>open('guideOverlay');$('guideClose').onclick=()=>close('guideOverlay');$('guideShop').onclick=()=>{close('guideOverlay');$('catalogo').scrollIntoView({behavior:'smooth'})};
 for(const id of ['detailOverlay','cartOverlay','guideOverlay'])$(id).addEventListener('click',e=>{if(e.target===$(id))close(id)});document.addEventListener('keydown',e=>{if(e.key==='Escape')for(const id of ['detailOverlay','cartOverlay','guideOverlay'])if($(id).classList.contains('show'))close(id);if($('detailOverlay').classList.contains('show')){if(e.key==='ArrowRight')showProduct(active+1,false);if(e.key==='ArrowLeft')showProduct(active-1,false)}});
-const faqs=[['¿Cómo compro?','Elige un diseño, ábrelo, selecciona talla y cantidad y presiona AGREGAR AL CARRITO. Repite con otras playeras si quieres. Abre el carrito para revisar y enviarnos el pedido.'],['¿Cuánto cuestan?','1 playera cuesta $399, 2 cuestan $699 y 3 cuestan $999 MXN. Las promociones se combinan automáticamente: por ejemplo, 4 piezas cuestan $1,398 y 6 piezas $1,998.'],['¿Puedo combinar diseños y tallas?','Sí. Puedes llevar distintos diseños y tallas en un mismo pedido. Cada combinación se registra por separado en el carrito.'],['¿Cómo sé mi talla?','Nuestras playeras tienen corte oversized. Si tienes dudas sobre las medidas, consulta la guía de tallas de las historias destacadas de @tarsi.mx antes de pagar.'],['¿Cómo se paga?','El pago se realiza mediante transferencia bancaria. Te compartimos los datos para pagar cuando revisemos y confirmemos tu pedido. No ingreses datos bancarios en esta página.'],['¿Cuándo llega mi pedido?','La preparación tarda aproximadamente 3 a 5 días hábiles después de confirmar el pago. El tiempo de transporte es adicional y depende del destino.'],['¿Hacen envíos?','Sí. Realizamos entregas en Querétaro y envíos a toda la República Mexicana. El costo del envío se cotiza según la ubicación.'],['¿El total ya incluye envío?','No. El carrito muestra el total de las playeras y sus promociones. El costo de envío se confirma antes de pagar, según tu dirección.'],['¿Puedo modificar mi pedido?','Sí. En el carrito puedes aumentar, reducir o eliminar piezas antes de enviarlo. Si ya nos enviaste el pedido, escríbenos para revisar si aún es posible modificarlo.'],['¿El pedido se confirma al enviarlo?','No. Enviar el desglose sirve para solicitar tu compra. El pedido se confirma cuando revisamos los detalles y recibimos el pago.'],['¿Qué hace la opción de correo?','Abre Gmail en una pestaña con el pedido redactado y dirigido a tarsi.studiomx@gmail.com. Necesitas iniciar sesión en Gmail y pulsar Enviar.'],['¿Puedo pedir por Instagram?','Sí. Copiamos el pedido y abrimos Instagram Direct. Si Instagram no abre la conversación, busca @tarsi.mx y pega el pedido.']];
+const faqs=[['¿Cómo compro?','Elige un diseño, ábrelo, selecciona talla y cantidad y presiona AGREGAR AL CARRITO. Repite con otras playeras si quieres. Abre el carrito para revisar y enviarnos el pedido.'],['¿Cuánto cuestan?','1 playera cuesta $399, 2 cuestan $699 y 3 cuestan $999 MXN. Las promociones se combinan automáticamente: por ejemplo, 4 piezas cuestan $1,398 y 6 piezas $1,998.'],['¿Puedo combinar diseños y tallas?','Sí. Puedes llevar distintos diseños y tallas en un mismo pedido. Cada combinación se registra por separado en el carrito.'],['¿Cómo sé mi talla?','Nuestras playeras tienen corte oversized. Si tienes dudas sobre las medidas, consulta la guía de tallas de las historias destacadas de @tarsi.mx antes de pagar.'],['¿Cómo se paga?','TARSI comparte los datos de transferencia al revisar tu solicitud.'],['¿Cuándo llega mi pedido?','La preparación tarda aproximadamente 3 a 5 días hábiles después de confirmar el pago. El tiempo de transporte es adicional y depende del destino.'],['¿Hacen envíos?','Sí. Realizamos entregas en Querétaro y envíos a toda la República Mexicana. El costo del envío se cotiza según la ubicación.'],['¿El total ya incluye envío?','El carrito muestra el subtotal de las playeras con promociones. Cuando cotizas el envío, verás su costo y el total a pagar.'],['¿Puedo modificar mi pedido?','Sí. En el carrito puedes aumentar, reducir o eliminar piezas antes de enviarlo. Si ya nos enviaste el pedido, escríbenos para revisar si aún es posible modificarlo.'],['¿El pedido se confirma al enviarlo?','No. Enviar el desglose sirve para solicitar tu compra. El pedido se confirma cuando revisamos los detalles y recibimos el pago.'],['¿Qué hace la opción de correo?','Abre Gmail en una pestaña con el pedido redactado y dirigido a tarsi.studiomx@gmail.com. Necesitas iniciar sesión en Gmail y pulsar Enviar.'],['¿Puedo pedir por Instagram?','Sí. Copiamos el pedido y abrimos Instagram Direct. Si Instagram no abre la conversación, busca @tarsi.mx y pega el pedido.']];
 $('faqList').innerHTML=faqs.map(([q,a],i)=>`<div class="faq ${i===0?'open':''}"><button aria-expanded="${i===0?'true':'false'}">${q}</button><p>${a}</p></div>`).join('');document.querySelectorAll('.faq button').forEach(b=>b.onclick=()=>{const x=b.parentElement;const opened=x.classList.toggle('open');b.setAttribute('aria-expanded',String(opened))});
 $('filters').addEventListener('click',e=>{const b=e.target.closest('[data-filter]');if(!b)return;filter=b.dataset.filter;document.querySelectorAll('.filter').forEach(x=>x.classList.toggle('active',x===b));draw()});
 let observer;if('IntersectionObserver'in window){observer=new IntersectionObserver(entries=>entries.forEach(e=>{if(e.isIntersecting){e.target.classList.add('visible');observer.unobserve(e.target)}}),{threshold:.08})}function observe(){document.querySelectorAll('.reveal:not(.visible)').forEach(x=>observer?observer.observe(x):x.classList.add('visible'))}draw();updateBar();observe();
-</script><script id="shipping-config">
-// Cuando Netlify entregue la URL del sitio, cambiar únicamente el dominio aquí.
-window.TARSI_SHIPPING_API_URL = "https://tarsi-skydropx.netlify.app/.netlify/functions/shipping-quote";
-</script><script id="shipping-integration">
-(function(){
- const $=id=>document.getElementById(id),btn=$('quoteShipping'),status=$('shippingStatus');
- let quote=null,quoteSignature='';
- const money=n=>'$'+Number(n).toLocaleString('es-MX',{maximumFractionDigits:2})+' MXN';
- const signature=()=>JSON.stringify({cart:cart,city:$('city').value,street:$('street').value,neighborhood:$('neighborhood').value,state:$('state').value,zip:$('zipCode').value,delivery:$('delivery').value});
- const validQuote=()=>quote&&quoteSignature===signature()&&(!quote.expires_at||Date.parse(quote.expires_at)>Date.now());
- function reset(){quote=null;quoteSignature='';status.textContent='Actualizaste tu pedido o dirección. Cotiza nuevamente.';refresh()}
- function refresh(){
-   const row=$('shippingTotalRow');if(row)row.remove();
-   const totals=$('totals');if(!totals||!cart||!cart.length)return;
-   const shipping=document.createElement('div');shipping.id='shippingTotalRow';shipping.className='totalrow';
-   const label=document.createElement('span');label.textContent='Envío';
-   const price=document.createElement('strong');price.textContent=validQuote()?money(quote.customer_price):'Por cotizar';
-   shipping.append(label,price);
-   const final=totals.lastElementChild;if(final){totals.insertBefore(shipping,final);if(validQuote()){
-      const last=final.querySelector('strong')||final.lastElementChild;
-      if(last&&typeof pricing==='function'&&typeof count==='function')last.textContent=money(window.pricing(count())+quote.customer_price);
-   }}
- }
- const origOrderText=window.orderText;
- if(typeof origOrderText==='function')window.orderText=function(){
-   const a=origOrderText(),valid=validQuote();
-   return a+'\nCOLONIA: '+$('neighborhood').value.trim()+'\nESTADO: '+$('state').value.trim()+'\nENVÍO TARSI: '+(valid?money(quote.customer_price):'Pendiente de cotización')+'\nTOTAL CON ENVÍO: '+(valid?money(window.pricing(count())+quote.customer_price):'Por confirmar');
- };
- btn.addEventListener('click',async()=>{
-   if($('delivery').value!=='Envío nacional'){status.textContent='Selecciona «Envío nacional» para cotizar.';return}
-   const destination={postal_code:$('zipCode').value.trim(),area_level1:$('state').value.trim(),area_level2:$('city').value.trim(),area_level3:$('neighborhood').value.trim()};
-   if(!/^\d{5}$/.test(destination.postal_code)||!destination.area_level1||!destination.area_level2||!destination.area_level3){status.textContent='Completa código postal, estado, municipio y colonia.';return}
-   if(!cart||!cart.length){status.textContent='Agrega al menos una playera.';return}
-   const sig=signature();btn.disabled=true;status.textContent='Buscando el mejor envío disponible…';
-   try{
-     const response=await fetch((window.TARSI_SHIPPING_API_URL||'/api/shipping/quote'),{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({destination,quantity:count()})});
-     const data=await response.json();if(!response.ok)throw Error(data.error||'No fue posible cotizar');
-     if(!Number.isFinite(data.customer_price)||data.customer_price<=0)throw Error('Respuesta inválida');
-     if(sig!==signature())throw Error('Cambió el pedido durante la cotización');
-     quote=data;quoteSignature=sig;status.textContent='Envío TARSI: '+money(data.customer_price)+(data.estimated_days?' · Entrega estimada '+data.estimated_days+' días hábiles':'')+'.';refresh();
-   }catch(e){quote=null;quoteSignature='';status.textContent='Error de cotización: '+String(e&&e.message||'Error desconocido').slice(0,180)+'. No se ha cobrado ningún pago.';refresh()}
-   finally{btn.disabled=false}
- });
- ['buyer','city','street','neighborhood','state','zipCode','phone','delivery'].forEach(id=>$(id).addEventListener('input',reset));
- const target=$('totals');new MutationObserver(()=>{if(!target.querySelector('#shippingTotalRow')&&cart&&cart.length)refresh()}).observe(target,{childList:true});
- window.TARSI_shipping={getQuote:()=>validQuote()?quote:null};
-})();
-</script></body></html>
+</script><script src="shipping-ui.js"></script></body></html>

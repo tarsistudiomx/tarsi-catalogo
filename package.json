@@ -1,0 +1,19 @@
+{
+  "dependencies": {
+    "@netlify/blobs": "11.1.9"
+  },
+  "devDependencies": {
+    "playwright": "1.65.1"
+  },
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "build": "node scripts/build.js",
+    "test": "node --test --experimental-test-isolation=none tests/*.test.js",
+    "test:browser": "npm run build && node --test --experimental-test-isolation=none tests/browser.js",
+    "postal:import": "node scripts/import-postal.js"
+  },
+  "name": "tarsi-catalogo",
+  "private": true
+}
