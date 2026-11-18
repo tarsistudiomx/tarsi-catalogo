@@ -71,3 +71,29 @@ test('GET /postal-code valida código, CORS y método', async () => {
   assert.equal(unpack(await handler(event('GET', {headers: {origin: 'https://somewhere.example'}}))).status, 403);
   assert.equal(unpack(await handler(event('POST'))).status, 405);
 });
+
+test('GET /postal-code lee Blobs con el contexto real de Functions de Netlify', async t => {
+  const previousContext = process.env.NETLIFY_BLOBS_CONTEXT;
+  t.after(() => {
+    if (previousContext === undefined) delete process.env.NETLIFY_BLOBS_CONTEXT;
+    else process.env.NETLIFY_BLOBS_CONTEXT = previousContext;
+  });
+  const requested = [];
+  t.mock.method(globalThis, 'fetch', async (url, options) => {
+    const {origin, pathname} = new URL(url);
+    assert.equal(origin, 'https://blobs.example');
+    assert.equal(options.headers.authorization, 'Bearer fixture-token');
+    requested.push(pathname);
+    if (pathname === '/fixture-site/site:tarsi-postal/current') {
+      return dummyResponse({version: 'fixture'});
+    }
+    return dummyResponse({'01000': [{name: 'San Ángel', city: 'Álvaro Obregón', state: 'Ciudad de México'}]});
+  });
+  const result = await postal.handler({
+    ...event('GET', {query: {zip: '01000'}, headers: {'x-nf-site-id': 'fixture-site', 'x-nf-deploy-id': 'fixture-deploy'}}),
+    blobs: Buffer.from(JSON.stringify({url: 'https://blobs.example', token: 'fixture-token'})).toString('base64')
+  });
+  assert.equal(result.statusCode, 200);
+  assert.equal(unpack(result).data.colonies[0].name, 'San Ángel');
+  assert.deepEqual(requested, ['/fixture-site/site:tarsi-postal/current', '/fixture-site/site:tarsi-postal/fixture/01']);
+});

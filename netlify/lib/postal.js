@@ -4,7 +4,8 @@ const {normalize, findColony} = require('../../shop');
 const {HttpError} = require('./http');
 
 const isZip = value => typeof value === 'string' && /^\d{5}$/.test(value);
-function createPostal(openStore = () => getStore({name: 'tarsi-postal', consistency: 'strong'})) {
+// The importer writes immutable catalog versions before publishing the current pointer.
+function createPostal(openStore = () => getStore('tarsi-postal')) {
   let version;
   let refreshAt = 0;
   const groups = new Map();
