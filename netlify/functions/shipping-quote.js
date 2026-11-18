@@ -42,13 +42,17 @@ async function quote(body){
  const created=await requestJson(API+'/api/v1/quotations',{method:'POST',headers,body:JSON.stringify(payload)});
  const id=created.id||created.quotation_id||created.data?.id||created.data?.attributes?.quotation_id;
  if(!id)throw new Error('Skydropx no devolviÃ³ identificador');
- let rates=[];let lastStatus='';let observed=0;
+ let rates=[];let lastStatus='';let observed=0;let diagnostic=[];
  // Las cotizaciones se procesan de forma asÃ­ncrona. No depender Ãºnicamente de is_completed.
  for(let attempt=0;attempt<12;attempt++){
   if(attempt)await sleep(attempt<5?1000:1500);
   const result=await requestJson(API+'/api/v1/quotations/'+encodeURIComponent(id),{headers});
   const found=unpackRates(result);
   observed=Math.max(observed,rateCandidates(result).length);
+  diagnostic=rateCandidates(result).slice(0,3).map(x=>{
+   const a=x?.attributes||x||{};
+   return {status:String(a.status||'sin_estado').slice(0,50),fields:Object.keys(a).filter(k=>!/(token|secret|address|phone|email|name|key|credential)/i.test(k)).slice(0,25),hasId:Boolean(x?.id||a.id),priceFields:['total','amount','price','total_price','cost'].filter(k=>a[k]!==undefined).map(k=>({field:k,valid:positive(a[k])!==null}))};
+  });
   lastStatus=String(result?.status||result?.data?.attributes?.status||'');
   if(found.length){rates=found;break}
   const completed=result?.is_completed===true||result?.data?.attributes?.is_completed===true||lastStatus==='completed';
@@ -56,7 +60,8 @@ async function quote(body){
  }
  if(!rates.length){
   console.warn('Skydropx sin tarifa utilizable',{quotationId:id,observedRates:observed,status:lastStatus});
-  return {statusCode:503,data:{error:observed?'Skydropx devolviÃ³ tarifas, pero ninguna tenÃ­a un precio y estado utilizables':'Skydropx no devolviÃ³ tarifas para este destino dentro del tiempo de espera',code:observed?'RATES_UNUSABLE':'RATES_EMPTY'}};
+  const summary=diagnostic.map((r,i)=>`Tarifa ${i+1}: estado=${r.status}; campos=${r.fields.join(',')}; id=${r.hasId}; precios=${r.priceFields.map(p=>p.field+':'+p.valid).join(',')||'ninguno'}`).join(' | ');
+  return {statusCode:503,data:{error:(observed?'Skydropx devolviÃ³ tarifas sin precio y estado utilizables. ':'Skydropx no devolviÃ³ tarifas. ')+`DiagnÃ³stico: cantidad=${observed}; estadoCotizaciÃ³n=${lastStatus||'sin_estado'}; ${summary||'sin muestras'}`,code:observed?'RATES_UNUSABLE':'RATES_EMPTY'}};
  }
  rates.sort((a,b)=>a.price-b.price||(a.days||999)-(b.days||999));
  const selected=rates[0];
