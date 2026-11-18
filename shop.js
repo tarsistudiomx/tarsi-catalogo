@@ -2,12 +2,12 @@
   'use strict';
 
   const products = [
-    ['Spider-Man clásico', 'CÓMICS'], ['Goku y Shenlong', 'ANIME'],
+    ['The Amazing Spider-Man', 'CÓMICS'], ['Goku y Shenlong', 'ANIME'],
     ['Gojo Satoru', 'ANIME'], ['Rayo McQueen', 'CINE / AUTOS'],
-    ['Sally', 'CINE / AUTOS'], ['Vegeta', 'ANIME'],
-    ['Goku Black', 'ANIME'], ['Amazing Fantasy', 'CÓMICS'],
-    ['Spider-Verse', 'CÓMICS'], ['Miles Morales', 'CÓMICS'],
-    ['Spider-Man emblema', 'CÓMICS'], ['Spider-Man urbano', 'CÓMICS']
+    ['Sally', 'CINE / AUTOS'], ['Majin Vegeta', 'ANIME'],
+    ['Goku Ultra Instinto', 'ANIME'], ['Amazing Fantasy', 'CÓMICS'],
+    ['Miles Morales', 'CÓMICS'], ['Spider-Man clásico', 'CÓMICS'],
+    ['Spider-Man emblema', 'CÓMICS'], ['Checo Pérez · Never Give Up', 'CINE / AUTOS']
   ].map(([name, category], id) => ({
     name, category, image: 'assets/playera-' + String(id + 1).padStart(2, '0') + '.jpg'
   }));
