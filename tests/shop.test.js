@@ -14,7 +14,7 @@ test('promociones para 0 a 30 y mezcla de modelos y tallas', () => {
   const lines = [{id: 4, size: 'S', qty: 2}, {id: 4, size: 'M', qty: 1}, {id: 0, size: 'XL', qty: 1}];
   assert.ok(lines.every(isLine));
   assert.equal(subtotal(count(lines)), 1398);
-  for (const line of [{id: '0', size: 'S', qty: 1}, {id: 12, size: 'S', qty: 1}, {id: 0, size: 'Z', qty: 1},
+  for (const line of [{id: '0', size: 'S', qty: 1}, {id: 13, size: 'S', qty: 1}, {id: 0, size: 'Z', qty: 1},
     {id: 0, size: 'S', qty: '1'}, {id: 0, size: 'S', qty: 1.5}, {id: 0, size: 'S', qty: 0}]) {
     assert.equal(isLine(line), false);
   }
