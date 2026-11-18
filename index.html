@@ -3,6 +3,12 @@
 .photo img[src$="playera-07.jpg"],.photo img[src$="playera-08.jpg"],.photo img[src$="playera-10.jpg"]{transform:rotate(-24deg) scale(.84)}
 .photo:hover img[src$="playera-07.jpg"],.photo:hover img[src$="playera-08.jpg"],.photo:hover img[src$="playera-10.jpg"]{transform:rotate(-24deg) scale(.89)}
 .detail-photo img[src$="playera-07.jpg"],.detail-photo img[src$="playera-08.jpg"],.detail-photo img[src$="playera-10.jpg"]{transform:rotate(-24deg) scale(.82)}
+/* Los archivos cuadrados pequeños tienen más margen blanco alrededor de la prenda. */
+:is(.photo,.detail-photo) img:is([src$="playera-01.jpg"],[src$="playera-02.jpg"],[src$="playera-03.jpg"],[src$="playera-05.jpg"],[src$="playera-09.jpg"]){--product-fit:1.6;transform:scale(var(--product-fit)) translateY(-3.3%)}
+:is(.photo,.detail-photo) img[src$="playera-04.jpg"]{--product-fit:1.73;transform:scale(var(--product-fit)) translate(-1.2%,-2.3%)}
+:is(.photo,.detail-photo) img[src$="playera-11.jpg"]{--product-fit:1.43;transform:scale(var(--product-fit)) translate(-2.8%,-1.2%)}
+.photo:hover img{scale:1.035}
+@media(prefers-reduced-motion:reduce){.photo:hover img{scale:1}}
 .detail-zoom{position:absolute;bottom:16px;right:16px;z-index:1;padding:9px 13px;border:1px solid #ded9cf;border-radius:20px;background:#fff;color:#232323;font:inherit;font-size:.8rem;cursor:pointer}
 .detail-photo img{transition:scale .2s ease}
 .detail-photo img.is-zoomed{scale:1.16}
