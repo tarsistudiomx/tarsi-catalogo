@@ -105,3 +105,16 @@ test('GET /postal-code lee Blobs con el contexto real de Functions de Netlify', 
   assert.equal(unpack(result).data.colonies[0].name, 'San Ángel');
   assert.deepEqual(requested, ['/fixture-site/site:tarsi-postal/current', '/fixture-site/site:tarsi-postal/fixture/01']);
 });
+
+test('la vista previa de fotos consulta la cotización pública sin enviar credenciales', async () => {
+  const handler = shipping.createHandler({env: {}, catalog: mockCatalog(), fetcher: async (url, options) => {
+    assert.equal(url, 'https://tarsi-skydropx.netlify.app/.netlify/functions/shipping-quote');
+    assert.deepEqual(options.headers, {'Content-Type': 'application/json'});
+    assert.equal(JSON.parse(options.body).destination.area_level3, 'San Ángel');
+    return dummyResponse({customer_price: 180});
+  }});
+  const input = event('POST', {body: {quantity: 1, destination}});
+  const preview = {...input, rawUrl: 'https://deploy-preview-4--tarsi-skydropx.netlify.app/.netlify/functions/shipping-quote'};
+  assert.deepEqual(unpack(await handler(preview)), {status: 200, data: {customer_price: 180}});
+  assert.equal(unpack(await handler(input)).data.code, 'SKYDROPX_NOT_CONFIGURED');
+});
