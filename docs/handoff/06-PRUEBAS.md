@@ -13,3 +13,9 @@
 - Pendiente: interfaz de Netlify autenticada hasta Floot, renderizado del Dashboard con administrador real, Gmail con sesión y Safari físico. No se enviaron correos, comprobantes, cobros ni guías reales.
 
 Seguimiento: se comprobó que la página pública todavía sirve el checkout anterior y que la vista previa devuelve 401 a solicitudes sin sesión. El nuevo enlace vuelve a usar navegación nativa hacia Gmail Web. La prueba de Chromium captura esa navegación y verifica destinatario, asunto y contenido; no inicia sesión ni envía correo.
+
+## Ventas integrales
+
+- 14 pruebas Node con SEPOMEX oficial y 3 pruebas Chromium (móvil emulado y escritorio). Cubren total manipulado, recuperación sin PII, cotización, doble clic, red, modales, enlace de Instagram y fallo de correo con pedido conservado.
+- Pedido real de prueba `TARSI-30475F2F61484CEF92034454F84C97A6`, $399 + $180 Paquetexpress = $579. Dos solicitudes concurrentes devolvieron el mismo recibo. Floot rechazó el pago sin sesión (403) y un monto distinto (422). Dos confirmaciones concurrentes dieron 200/409, una fila de pago y una actividad; inicio de preparación y preparado dieron 200. Fechas calculadas 2026-11-23 a 2026-11-25. Los ingresos reales no cambiaron. Se usó un endpoint temporal de sandbox, retirado después, y una identidad de auditoría de prueba revocada.
+- Pendientes: navegador autenticado en Netlify y Dashboard, Safari físico, aceptación de Resend, tarifa local comercial, flujo completo de envío y entrega sobre esta versión.

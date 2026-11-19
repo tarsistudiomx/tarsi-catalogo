@@ -25,5 +25,7 @@ export const payload = z.object({
 const identity = {key: z.uuid(), digest: z.string().regex(/^[a-f0-9]{64}$/)};
 export const schema = z.discriminatedUnion('action', [
   z.object({...identity, action: z.literal('lookup')}),
+  z.object({key: z.uuid(), action: z.literal('recover')}),
+  z.object({key: z.uuid(), action: z.literal('notify')}),
   z.object({...identity, action: z.literal('create'), order: payload})
 ]);

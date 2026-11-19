@@ -118,20 +118,9 @@ test('Chromium móvil: catálogo, carrito mixto, dirección canónica, costo y p
     await page.click('#quoteShipping');
     await waitText(page, '#totals .final', '$1,538 MXN');
     assert.equal(await page.locator('#orderActions :is(button, a)').count(), 3);
-    await waitText(page, '#shareHelpOrder', 'Comparte o copia');
-    await page.route('https://mail.google.com/**', route => route.fulfill({body: 'Gmail de prueba'}));
-    const gmailRequest = page.waitForRequest('https://mail.google.com/**');
-    await page.click('#emailOrder');
-    const gmail = new URL((await gmailRequest).url());
-    assert.equal(gmail.origin, 'https://mail.google.com');
-    assert.equal(gmail.searchParams.get('to'), 'arista.studiot@gmail.com');
-    assert.equal(gmail.searchParams.get('su'), 'Nuevo pedido TARSI');
-    const draft = gmail.searchParams.get('body');
-    assert.match(draft, /Calle de prueba 123, San Ángel/);
-    assert.match(draft, /ENVÍO: \$140 MXN/);
-    assert.match(draft, /PAQUETERÍA: FedEx · Priority/);
-    assert.doesNotMatch(draft, /SKYDROPX|browser-q/);
-    assert.match(draft, /TOTAL: \$1,538 MXN/);
+    await page.click('#shareOrder');
+    await waitText(page, '#shareDialog', 'COMPARTE TU PEDIDO.');
+    assert.equal(await page.locator('#shareDialog a').getAttribute('href'), 'https://www.instagram.com/tarsi.mx/');
     assert.deepEqual(errors, []);
   } finally {
     await page.close();
@@ -178,11 +167,11 @@ test('Checkout móvil: datos incompletos, doble clic, red, reintento, confirmaci
     await page.route('**/.netlify/functions/submit-order', async route => {
       const body = route.request().postDataJSON();
       requests.push(body);
-      if (!body.customer.name) return route.fulfill({status: 400, json: {error: 'Revisa tu nombre.'}});
+      if (!body.recover && !body.customer?.name) return route.fulfill({status: 400, json: {error: 'Revisa tu nombre.'}});
       if (requests.length === 2) return route.abort('failed');
       return route.fulfill({json: {number: 'TARSI-PRUEBA', status: 'Pendiente de pago',
         items: [{name: 'The Amazing Spider-Man', size: 'M', qty: 1}], subtotal: 399, shipping: 140, total: 539,
-        transfer: {bank: 'Banco de prueba', holder: 'Titular de prueba', clabe: '000000000000000000'}}});
+        notification: body.notify ? 'retry' : undefined, transfer: {bank: 'Banco de prueba', holder: 'Titular de prueba', clabe: '000000000000000000'}}});
     });
     await page.goto(base);
     await selectProduct(page, 0, 'M', 1);
@@ -199,11 +188,11 @@ test('Checkout móvil: datos incompletos, doble clic, red, reintento, confirmaci
     await page.click('#quoteShipping');
     await waitText(page, '#totals .final', '$539 MXN');
     await page.locator('#submitOrder').evaluate(button => {button.click(); button.click();});
-    await waitText(page, '#orderStatus', 'Reintenta con el mismo pedido');
+    await waitText(page, '#orderStatus', 'Reintenta con los mismos datos');
     assert.equal(requests.length, 2);
     assert.equal(await page.locator('.cart-line').count(), 1);
     await page.click('#submitOrder');
-    await waitText(page, '#orderConfirmation', '¡RECIBIMOS TU PEDIDO!');
+    await waitText(page, '#orderConfirmation', '¡TU PEDIDO FUE RECIBIDO!');
     assert.equal(requests.length, 3);
     assert.equal(requests[1].key, requests[2].key);
     assert.equal(await page.locator('.cart-line').count(), 0);
@@ -216,10 +205,22 @@ test('Checkout móvil: datos incompletos, doble clic, red, reintento, confirmaci
     await page.click('#copyOrderNumber');
     assert.equal(await page.evaluate(() => window.copied), 'TARSI-PRUEBA');
     await page.click('#shareReceipt');
-    await waitText(page, '#toast', 'PEDIDO COPIADO');
+    await page.click('#copySummary');
+    await waitText(page, '#shareStatus', 'Resumen copiado.');
     const copied = await page.evaluate(() => window.copied);
     assert.match(copied, /TARSI-PRUEBA/);
     assert.doesNotMatch(copied, /SKYDROPX|5555550000/);
+    await page.locator('#shareDialog button').first().click();
+    await page.click('#emailReceipt');
+    await waitText(page, '#notificationStatus', 'Vuelve a intentar el correo');
+    assert.equal(requests[3].key, requests[2].key);
+    assert.equal(requests[3].notify, true);
+    await page.reload();
+    await page.click('#navCart');
+    await page.click('#recoverOrder');
+    await waitText(page, '#orderConfirmation', '¡TU PEDIDO FUE RECIBIDO!');
+    assert.equal(requests[4].key, requests[2].key);
+    assert.equal(requests[4].recover, true);
     assert.equal(await page.locator('#cartOverlay .modal').evaluate(modal => modal.scrollWidth <= modal.clientWidth), true);
   } finally {
     await page.close();

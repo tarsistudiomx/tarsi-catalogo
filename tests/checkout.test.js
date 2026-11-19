@@ -23,8 +23,9 @@ function setup() {
   const handler = createHandler({env, catalog: mockCatalog(), fetcher: async (_url, request) => {
     assert.equal(request.headers.Authorization, 'Bearer test');
     const data = JSON.parse(request.body);
-    if (order && data.digest !== digest) return Response.json({}, {status: 409});
+    if (order && ['lookup','create'].includes(data.action) && data.digest !== digest) return Response.json({}, {status: 409});
     if (data.action === 'create' && !order) { order = data.order; digest = data.digest; }
+    if (data.action === 'notify') return Response.json({notification: 'retry'});
     return Response.json({receipt: order ? {...order, number: 'TARSI-TEST', status: 'Pendiente de pago'} : null});
   }});
   return {request: async body => unpack(await handler(event('POST', {body}))), stored: () => order};
@@ -51,4 +52,15 @@ test('rechaza cotización alterada, vencida o de otra cantidad y datos incomplet
   }
   assert.equal((await request({...input, customer: {}})).status, 400);
   assert.equal(stored(), undefined);
+});
+
+test('recupera el pedido sin datos personales y conserva el recibo si falla el correo', async () => {
+  const {request} = setup();
+  assert.equal((await request({...input, proof: proof(), acceptedTotal: 1})).data.code, 'TOTAL_CHANGED');
+  const result = await request({...input, proof: proof(), notify:true});
+  assert.equal(result.status, 200);
+  assert.equal(result.data.notification, 'retry');
+  const recovered = await request({key: input.key, recover:true});
+  assert.equal(recovered.data.number, result.data.number);
+  assert.doesNotMatch(JSON.stringify(recovered.data), /5555551234|Calle de prueba/);
 });

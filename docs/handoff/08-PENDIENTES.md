@@ -1,0 +1,8 @@
+# Pendientes de ventas integrales
+
+1. Conectar Resend con remitente verificado y buzón autorizado de prueba. Verificar aceptación, repetir con la misma clave y comprobar que solo hay una notificación aceptada. El destinatario operativo es tarsi.studiomx@gmail.com.
+2. Confirmar tarifa de entrega en Querétaro. Una vez configurada, validar el importe antes de ordenar y comprobar salida y entrega local sin guía.
+3. Recorrer tienda y Dashboard con sesiones autorizadas. Probar Safari físico y la secuencia de despacho/entrega nacional de la revisión actual.
+4. Implementar gestión administrativa de devoluciones y ajustes parciales/superiores con eventos de auditoría y métricas netas, y ampliar paginación de pedidos y actividades. Para pagos parciales o superiores actualmente se bloquea la confirmación y se requiere resolución manual. Los cambios de talla requieren intervención de TARSI; no se reescribe el importe aceptado.
+5. Verificar que Netlify aplica el límite de solicitudes de checkout, y validar idempotencia entre pestañas en Safari físico. El navegador usa Web Locks cuando están disponibles y PostgreSQL deduplica las solicitudes que comparten clave.
+6. Presentar el resultado completo para aprobación y aplicar el procedimiento coordinado de publicación. La huella productiva todavía está vacía.

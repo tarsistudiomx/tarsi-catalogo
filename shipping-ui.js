@@ -14,6 +14,8 @@
   let shippingLookup;
   let quote;
   let expiry;
+  let localDelivery = null;
+  const localPrice = () => $('delivery').value === 'Entrega en Querétaro' ? localDelivery : null;
 
   async function request(route, data, signal) {
     const response = await fetch(api + '/.netlify/functions/' + route, {
@@ -34,12 +36,13 @@
     const pieces = count();
     const items = pricing(pieces);
     const shipping = currentQuote();
+    const fee = shipping?.customer_price ?? localPrice();
     $('totals').innerHTML = `
       <div class="totalrow"><span>${pieces} piezas · precio individual</span><b>${money(pieces * unitPrice)}</b></div>
       <div class="totalrow"><span>Descuento por promociones</span><b>− ${money(pieces * unitPrice - items)}</b></div>
       <div class="totalrow"><span>Subtotal de prendas</span><b>${money(items)}</b></div>
-      <div class="totalrow"><span>Envío</span><b>${shipping ? money(shipping.customer_price) : national() ? 'Por cotizar' : 'Por confirmar'}</b></div>
-      <div class="totalrow final"><span>TOTAL</span><span>${shipping ? money(items + shipping.customer_price) : pieces ? 'Por confirmar' : money(0)}</span></div>`;
+      <div class="totalrow"><span>Envío</span><b>${fee !== null ? money(fee) : national() ? 'Por cotizar' : 'Por confirmar'}</b></div>
+      <div class="totalrow final"><span>TOTAL</span><span>${fee !== null ? money(items + fee) : pieces ? 'Por confirmar' : money(0)}</span></div>`;
     $('quoteShipping').disabled = !national() || !pieces || pieces > maxQuantity || Boolean(shippingLookup);
   }
 
@@ -177,7 +180,14 @@
     return true;
   }
 
-  window.TarsiShipping = {currentQuote, readyForShipping};
+  fetch(api + '/.netlify/functions/checkout-config').then(response => response.ok ? response.json() : null)
+    .then(config => {
+      if (Number.isSafeInteger(config?.localDelivery) && config.localDelivery >= 0) {
+        localDelivery = config.localDelivery;
+        renderTotals();
+      }
+    }).catch(() => {});
+  window.TarsiShipping = {currentQuote, readyForShipping, localPrice};
   invalidate();
   if (zip.value) loadPostal();
 })();

@@ -52,7 +52,8 @@ function createHandler({env = process.env, catalog = postal, fetcher = fetch} = 
   return endpoint(['POST'], async event => {
     if ((event.body?.length ?? 0) > 16000) throw invalid('El pedido excede el tamaño permitido.');
     const body = readBody(event);
-    const order = readOrder(body);
+    if (typeof body.key !== 'string' || !uuid.test(body.key)) throw invalid('No se pudo identificar el intento.');
+    const order = body.recover === true ? null : readOrder(body);
     if (!env.TARSI_DASHBOARD_URL || !env.TARSI_DASHBOARD_TOKEN || !(env.TARSI_QUOTE_SECRET?.length >= 32)) {
       throw new HttpError(503, 'ORDER_UNAVAILABLE', 'El registro de pedidos está temporalmente indisponible. Tu carrito sigue guardado.');
     }
@@ -69,7 +70,8 @@ function createHandler({env = process.env, catalog = postal, fetcher = fetch} = 
       if (!response.ok) throw new Error('Dashboard request failed');
       return response.json();
     }
-    let {receipt} = await dashboard({action: 'lookup'});
+    let {receipt} = await dashboard({action: order ? 'lookup' : 'recover'});
+    if (!receipt && !order) throw new HttpError(404, 'ORDER_NOT_FOUND', 'Todavía no hay un pedido registrado para este intento.');
     if (!receipt) {
       const address = await catalog.validate(order.address);
       let quote = null;
@@ -82,21 +84,31 @@ function createHandler({env = process.env, catalog = postal, fetcher = fetch} = 
         throw new HttpError(503, 'LOCAL_DELIVERY_UNAVAILABLE', 'El costo de entrega local está por confirmar. Contacta a TARSI o selecciona envío nacional.');
       }
       const shipping = quote?.price ?? Number(env.TARSI_LOCAL_DELIVERY_MXN);
+      if (body.acceptedTotal !== undefined && body.acceptedTotal !== order.subtotal + shipping) {
+        throw new HttpError(409, 'TOTAL_CHANGED', 'El total cambió. Revisa la cotización antes de continuar.');
+      }
       ({receipt} = await dashboard({action: 'create', order: {
         ...order, address: {...address, street: order.address.street}, shipping, total: order.subtotal + shipping,
         carrier: quote?.carrier ?? null, service: quote?.service ?? null, skydropx: quote,
         origin: 'tienda web TARSI'
       }}));
     }
-    if (typeof receipt?.number !== 'string' || receipt.status !== 'Pendiente de pago' ||
+    if (typeof receipt?.number !== 'string' || typeof receipt.status !== 'string' ||
         !Array.isArray(receipt.items) || ![receipt.subtotal, receipt.shipping, receipt.total].every(Number.isSafeInteger)) {
       throw new Error('Invalid dashboard receipt');
+    }
+    let notification;
+    if (body.notify === true) {
+      try { ({notification} = await dashboard({action: 'notify'})); }
+      catch { notification = 'retry'; }
     }
     const {TARSI_BANK_NAME: bank, TARSI_BANK_HOLDER: holder, TARSI_BANK_CLABE: clabe} = env;
     const transfer = bank?.trim() && holder?.trim() && /^\d{18}$/.test(clabe || '') ? {bank, holder, clabe} : null;
     return {data: {number: receipt.number, status: receipt.status, items: receipt.items.map(({name, size, qty}) => ({name, size, qty})),
-      subtotal: receipt.subtotal, shipping: receipt.shipping, total: receipt.total, transfer}};
+      subtotal: receipt.subtotal, shipping: receipt.shipping, total: receipt.total, discount: receipt.discount, carrier: receipt.carrier, service: receipt.service, transfer, notification}};
   });
 }
 exports.handler = createHandler();
 exports.createHandler = createHandler;
+
+exports.config = {rateLimit: {windowLimit: 20, windowSize: 60, aggregateBy: ['ip']}};
