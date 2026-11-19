@@ -39,7 +39,7 @@ export async function handle(request: Request) {
   if (!row) return json({receipt: null});
   if ('digest' in input && row.requestDigest !== input.digest) return json({error: 'Conflicto de idempotencia'}, 409);
   const order = JSON.parse(row.payload) as z.infer<typeof payload>;
-  const {items, subtotal, shipping, total, discount, carrier, service} = order;
+  const {items, subtotal, shipping, total, discount, carrier, service, delivery} = order;
   const notification = input.action === 'notify' ? await notifyOrder(row.id, row.number, isTest, order).catch(() => 'retry') : undefined;
-  return json({receipt: {number: row.number, items, subtotal, shipping, total, discount, carrier, service, status: row.status}, notification});
+  return json({receipt: {number: row.number, items, subtotal, shipping, total, discount, carrier, service, delivery, status: row.status}, notification});
 }

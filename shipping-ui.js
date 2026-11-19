@@ -14,8 +14,7 @@
   let shippingLookup;
   let quote;
   let expiry;
-  let localDelivery = null;
-  const localPrice = () => $('delivery').value === 'Entrega en Querétaro' ? localDelivery : null;
+  const local = () => $('delivery').value === 'Entrega en Querétaro';
 
   async function request(route, data, signal) {
     const response = await fetch(api + '/.netlify/functions/' + route, {
@@ -36,13 +35,13 @@
     const pieces = count();
     const items = pricing(pieces);
     const shipping = currentQuote();
-    const fee = shipping?.customer_price ?? localPrice();
+    const fee = shipping?.customer_price ?? (local() ? 0 : null);
     $('totals').innerHTML = `
       <div class="totalrow"><span>${pieces} piezas · precio individual</span><b>${money(pieces * unitPrice)}</b></div>
       <div class="totalrow"><span>Descuento por promociones</span><b>− ${money(pieces * unitPrice - items)}</b></div>
       <div class="totalrow"><span>Subtotal de prendas</span><b>${money(items)}</b></div>
-      <div class="totalrow"><span>Envío</span><b>${fee !== null ? money(fee) : national() ? 'Por cotizar' : 'Por confirmar'}</b></div>
-      <div class="totalrow final"><span>TOTAL</span><span>${fee !== null ? money(items + fee) : pieces ? 'Por confirmar' : money(0)}</span></div>`;
+      <div class="totalrow"><span>Envío</span><b>${local() ? 'Por cotizar el día de la entrega' : fee !== null ? money(fee) : national() ? 'Por cotizar' : 'Por confirmar'}</b></div>
+      <div class="totalrow final"><span>${local() ? 'TOTAL A TRANSFERIR' : 'TOTAL'}</span><span>${fee !== null ? money(items + fee) : pieces ? 'Por confirmar' : money(0)}</span></div>`;
     $('quoteShipping').disabled = !national() || !pieces || pieces > maxQuantity || Boolean(shippingLookup);
   }
 
@@ -180,14 +179,5 @@
     return true;
   }
 
-  fetch(api + '/.netlify/functions/checkout-config').then(response => response.ok ? response.json() : null)
-    .then(config => {
-      if (Number.isSafeInteger(config?.localDelivery) && config.localDelivery >= 0) {
-        localDelivery = config.localDelivery;
-        renderTotals();
-      }
-    }).catch(() => {});
-  window.TarsiShipping = {currentQuote, readyForShipping, localPrice};
-  invalidate();
-  if (zip.value) loadPostal();
+  window.TarsiShipping = {currentQuote, readyForShipping};
 })();

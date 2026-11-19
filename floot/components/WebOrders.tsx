@@ -1,4 +1,5 @@
 import React, {useEffect, useRef, useState} from 'react';
+import {ConnectGoogleButton} from './ConnectGoogleButton';
 import {Button} from './Button';
 import {Input} from './Input';
 import {transitions, type OrderStatus} from '../endpoints/tarsi_web_admin_POST.schema';
@@ -82,6 +83,8 @@ export function WebOrders({onRevenue, tab, openOrder}: {tab: string; openOrder: 
     <section hidden={tab !== 'pedidos'}>
     <h3>PEDIDOS POR HACER</h3>{queue.map(work)}
     <h3>PEDIDOS REGISTRADOS</h3>
+    <p>Correo de TARSI: conecta tarsi.studiomx@gmail.com para enviar avisos de pedidos.</p>
+    <ConnectGoogleButton feature="gmail"/>
     <Button disabled={busy} onClick={() => void run(async () => {
       await load(!test);
       setTest(!test);
@@ -96,7 +99,7 @@ export function WebOrders({onRevenue, tab, openOrder}: {tab: string; openOrder: 
       <p>{Object.entries(order.details.address).filter(([key]) => key !== 'country_code').map(([,value]) => value).join(', ')}</p>
       <p>{order.details.delivery} {[order.details.carrier, order.details.service].filter(Boolean).join(' · ')}</p>
       <ul>{order.details.items.map(item => <li key={item.id + ':' + item.size}>{item.name} · {item.size} × {item.qty}</li>)}</ul>
-      <p>Subtotal {money(order.details.subtotal)} · Envío {money(order.details.shipping)} · Total {money(order.details.total)}</p>
+      <p>Subtotal {money(order.details.subtotal)} · Envío {order.details.delivery === 'Entrega en Querétaro' ? 'por cotizar el día de la entrega' : money(order.details.shipping)} · Total {money(order.details.total)}</p>
       {order.tracking && <p>Guía {order.tracking}</p>}
       {order.paymentReference && <p>Referencia verificada: {order.paymentReference}{order.paymentNote && ' · '+order.paymentNote}</p>}
       {['Pendiente de pago','Pago por verificar'].includes(order.status) && <Button disabled={busy} onClick={() => {

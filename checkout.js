@@ -24,13 +24,14 @@
   function summary(order, quote, saved) {
     const quantity = order.items.reduce((sum, x) => sum + x.qty, 0);
     const subtotal = saved?.subtotal ?? pricing(quantity);
-    const shipping = saved?.shipping ?? quote?.customer_price;
+    const local = (saved?.delivery ?? order.delivery) === 'Entrega en Querétaro';
+    const shipping = local ? 0 : saved?.shipping ?? quote?.customer_price;
     return [
       'PEDIDO TARSI', ...(saved ? ['NÚMERO: ' + saved.number] : []),
       ...order.items.map(x => (x.name || products[x.id].name) + ' | Talla ' + x.size + ' | ' + x.qty + ' pieza(s)'),
       'SUBTOTAL: ' + money(subtotal),
       'DESCUENTOS: ' + money(saved?.discount ?? quantity * unitPrice - subtotal),
-      'ENVÍO: ' + (shipping === undefined ? 'Por confirmar' : money(shipping)),
+      'ENVÍO: ' + (local ? 'Por cotizar el día de la entrega' : shipping === undefined ? 'Por confirmar' : money(shipping)),
       ...([quote?.carrier_name, quote?.carrier_service].some(Boolean) ?
         ['PAQUETERÍA: ' + [quote.carrier_name, quote.carrier_service].filter(Boolean).join(' · ')] : []),
       'TOTAL: ' + (shipping === undefined ? 'Por confirmar' : money(saved?.total ?? subtotal + shipping)),
@@ -84,8 +85,9 @@
     if (preview) line('Modo de prueba. No realices una transferencia.', 'En el Dashboard, abre Pedidos y luego Ver pedidos de prueba.');
     for (const item of data.items) line(item.name, 'Talla ' + item.size + ' · ' + item.qty + ' pieza(s)');
     line('Subtotal', money(data.subtotal));
-    line('Envío', money(data.shipping));
-    line('Total', money(data.total));
+    const local = data.delivery === 'Entrega en Querétaro';
+    line('Envío', local ? 'Por cotizar el día de la entrega. TARSI te escribirá cuando tus playeras estén listas.' : money(data.shipping));
+    line(local ? 'Total a transferir por las playeras' : 'Total', money(data.total));
     const payable = Boolean(data.transfer) && ['Pendiente de pago','Pago por verificar'].includes(data.status);
     $('transferDetails').hidden = !payable;
     $('transferPending').hidden = Boolean(data.transfer) || data.status !== 'Pendiente de pago';
@@ -113,7 +115,7 @@
     })[data.notification] || '';
   }
 
-  $('shareOrder').onclick = () => share(draft(), window.TarsiShipping.currentQuote() || (window.TarsiShipping.localPrice() === null ? null : {customer_price: window.TarsiShipping.localPrice()}));
+  $('shareOrder').onclick = () => share(draft(), window.TarsiShipping.currentQuote());
   $('shareReceipt').onclick = () => share({items: receipt.items}, {carrier_name: receipt.carrier, carrier_service: receipt.service}, receipt);
   for (const [id, value] of [
     ['copyOrderNumber', () => receipt.number], ['copyClabe', () => receipt.transfer.clabe], ['copyConcept', () => receipt.number]
@@ -137,11 +139,7 @@
     const order = recover ? null : draft();
     if (!recover && !order.items.length) return toast('AGREGA AL MENOS UNA PLAYERA');
     const quote = window.TarsiShipping.currentQuote();
-    const fee = quote?.customer_price ?? window.TarsiShipping.localPrice();
-    if (!recover && order.delivery === 'Entrega en Querétaro' && fee === null) {
-      status.textContent = 'La tarifa local está por confirmar. Contacta a TARSI o elige envío nacional.';
-      return;
-    }
+    const fee = quote?.customer_price ?? (order?.delivery === 'Entrega en Querétaro' ? 0 : null);
     const form = document.querySelector('.cart-modal .checkout');
     busy = button.disabled = $('emailOrder').disabled = $('emailReceipt').disabled = form.inert = $('cartItems').inert = true;
     const feedback = $('orderConfirmation').open ? $('notificationStatus') : status;

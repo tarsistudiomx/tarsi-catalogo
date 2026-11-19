@@ -1,5 +1,7 @@
 # Pendientes de ventas integrales
 
+La modalidad local en Querétaro cobra solo las prendas; TARSI cotiza el delivery y contacta al cliente cuando esté listo. El remitente para producción es Gmail por OAuth de Floot. El administrador debe autorizar tarsi.studiomx@gmail.com desde Pedidos → Conectar Gmail. Resend conserva su función de pruebas y se confirmó recepción en Gmail.
+
 1. Conectar Resend con remitente verificado y buzón autorizado de prueba. Verificar aceptación, repetir con la misma clave y comprobar que solo hay una notificación aceptada. El destinatario operativo es tarsi.studiomx@gmail.com.
 2. Confirmar tarifa de entrega en Querétaro. Una vez configurada, validar el importe antes de ordenar y comprobar salida y entrega local sin guía.
 3. Recorrer tienda y Dashboard con sesiones autorizadas. Probar Safari físico y la secuencia de despacho/entrega nacional de la revisión actual.

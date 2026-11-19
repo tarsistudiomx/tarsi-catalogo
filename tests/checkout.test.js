@@ -64,3 +64,16 @@ test('recupera el pedido sin datos personales y conserva el recibo si falla el c
   assert.equal(recovered.data.number, result.data.number);
   assert.doesNotMatch(JSON.stringify(recovered.data), /5555551234|Calle de prueba/);
 });
+
+test('Querétaro cobra solo prendas y deja el envío para el día de entrega', async () => {
+  const {request, stored} = setup();
+  const order = {...input, delivery: 'Entrega en Querétaro', acceptedTotal: 1398,
+    address: {street: 'Calle de prueba 1', postal_code: '76099', area_level3: 'Plazas del Sol 2a Sección'}};
+  const result = await request(order);
+  assert.equal(result.status, 200);
+  assert.equal(result.data.total, 1398);
+  assert.equal(result.data.delivery, 'Entrega en Querétaro');
+  assert.equal(stored().shipping, 0);
+  assert.equal(stored().skydropx, null);
+  assert.equal((await setup().request({...order, address: input.address})).status, 400);
+});
