@@ -1,4 +1,4 @@
-import {createCipheriv,createDecipheriv,createHash,createHmac,randomBytes} from 'node:crypto';
+import {createCipheriv,createDecipheriv,createHash,createHmac,randomBytes,timingSafeEqual} from 'node:crypto';
 import {sql} from 'kysely';
 import {db} from './db';
 import {persistWebOrder,StockUnavailable,InventoryNotReady} from './persistWebOrder';
@@ -80,6 +80,13 @@ export async function handleStorefront(request:Request,isTest:boolean, flow=fals
   try {
     const marker = isTest ? 'checkout-v1' : 'storefront-v1';
     if (request.headers.get(isTest ? 'x-tarsi-preview' : 'x-tarsi-storefront') !== marker) return json({error:'Solicitud no válida.'},403);
+    if(flow){
+      const key=isTest?process.env.TARSI_PREVIEW_STOREFRONT_KEY:process.env.TARSI_STOREFRONT_KEY;
+      const authorization=request.headers.get('authorization')||'';
+      const digest=(value:string)=>createHash('sha256').update(value).digest();
+      if(!key||key.length<32||!timingSafeEqual(digest('Bearer '+key),digest(authorization)))
+        return json({error:'Solicitud no válida.'},403);
+    }
     const table = sql.table(isTest ? 'tarsi_preview_checkout_config' : 'tarsi_live_checkout_config');
     const transfer = (await sql<{bank:string;holder:string;clabe:string}>`SELECT bank,holder,clabe FROM ${table}
       WHERE slot ${isTest ? sql`` : sql`AND enabled`}`.execute(db)).rows[0];
@@ -106,7 +113,7 @@ export async function handleStorefront(request:Request,isTest:boolean, flow=fals
     if(input.mode==='renew'){
       await allot('order',isTest);
       const prior=(await sql<{id:string;payload:string}>`SELECT o.id,o.payload::text FROM tarsi_web_orders o JOIN tarsi_order_flow f ON f.order_id=o.id
-         WHERE o.idempotency_key=${input.key}::uuid AND o.is_test=${isTest} AND o.status='Pendiente de pago'
+         WHERE f.recovery_key=${input.key}::uuid AND o.is_test=${isTest} AND o.status='Pendiente de pago'
          AND f.renewals<2 AND f.revoked_at IS NULL AND f.recover_until>now()`.execute(db)).rows[0];
       if(!prior) return json({error:'No se puede renovar esta reserva. Si ya transferiste, registra tu pago o contacta a TARSI.'},409);
       const order=payload.parse(JSON.parse(prior.payload));

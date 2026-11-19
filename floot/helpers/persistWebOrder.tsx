@@ -25,7 +25,7 @@ export async function persistWebOrder(input: z.infer<typeof schema>, isTest: boo
         if (flow) {
           const policy=await sql<{enabled:boolean}>`SELECT enabled FROM tarsi_blank_policy WHERE is_test=${isTest} FOR SHARE`.execute(trx);
           if (!policy.rows[0]?.enabled) throw new InventoryNotReady();
-          await sql`INSERT INTO tarsi_order_flow(order_id) VALUES (${id}::uuid)`.execute(trx);
+          await sql`INSERT INTO tarsi_order_flow(order_id,recovery_key) VALUES (${id}::uuid,${input.key}::uuid)`.execute(trx);
           const inventory=await sql<{ok:boolean}>`SELECT tarsi_allocate_blanks(${id}::uuid,false) AS ok`.execute(trx);
           if (!inventory.rows[0]?.ok) throw new StockUnavailable();
           await sql`INSERT INTO tarsi_mail_outbox(order_id,kind,due_at) VALUES
@@ -39,8 +39,12 @@ export async function persistWebOrder(input: z.infer<typeof schema>, isTest: boo
       f.hold_until,f.recover_until,f.revoked_at,r.transferred_on::text,f.order_id IS NOT NULL AS is_flow
       FROM tarsi_web_orders o LEFT JOIN tarsi_order_flow f ON f.order_id=o.id
       LEFT JOIN tarsi_transfer_reports r ON r.order_id=o.id
-      WHERE o.idempotency_key=${input.key}::uuid AND o.is_test=${isTest}
-      AND (f.order_id IS NULL OR (f.revoked_at IS NULL AND f.recover_until>now()))`.execute(trx);
+      WHERE o.is_test=${isTest} AND
+      ${input.action==='recover'||input.action==='notify'
+        ? sql`((f.recovery_key=${input.key}::uuid AND f.revoked_at IS NULL AND f.recover_until>now()) OR
+          (f.order_id IS NULL AND o.idempotency_key=${input.key}::uuid))`
+        : sql`o.idempotency_key=${input.key}::uuid AND
+          (f.order_id IS NULL OR (f.recovery_key=o.idempotency_key AND f.revoked_at IS NULL AND f.recover_until>now()))`}`.execute(trx);
     return result.rows[0];
   });
   if (!row) return {receipt: null};

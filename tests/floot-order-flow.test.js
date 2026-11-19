@@ -16,7 +16,8 @@ test('Floot v2 over isolated PostgreSQL: checkout, reservation, report, approval
   const {Kysely, PostgresAdapter, PostgresIntrospector, PostgresQueryCompiler, CamelCasePlugin} = require(join(modules, 'kysely'));
   const pg = new PGlite();
   const savedFetch = global.fetch;
-  const savedEnv = {JWT_SECRET: process.env.JWT_SECRET, TARSI_TEST_STOREFRONT_URL: process.env.TARSI_TEST_STOREFRONT_URL};
+  const names = ['JWT_SECRET','TARSI_TEST_STOREFRONT_URL','TARSI_PREVIEW_STOREFRONT_KEY','TARSI_STOREFRONT_KEY'];
+  const savedEnv = Object.fromEntries(names.map(name=>[name,process.env[name]]));
   const queued = [];
   let busy = false;
   const connection = {
@@ -72,6 +73,8 @@ test('Floot v2 over isolated PostgreSQL: checkout, reservation, report, approval
     await pg.exec("INSERT INTO tarsi_preview_checkout_config(bank,holder,clabe) VALUES('Banco de prueba','Titular de prueba','000000000000000000')");
     process.env.JWT_SECRET = 'test-only-hmac-secret';
     process.env.TARSI_TEST_STOREFRONT_URL = 'https://deploy-preview-7--tarsi-skydropx.netlify.app/';
+    process.env.TARSI_PREVIEW_STOREFRONT_KEY='synthetic-preview-key-at-least-32';
+    process.env.TARSI_STOREFRONT_KEY='synthetic-live-key-at-least-32-characters';
     const mails = [];
     let mailStatus = 200;
     global.fetch = async (url, options) => {
@@ -88,8 +91,9 @@ test('Floot v2 over isolated PostgreSQL: checkout, reservation, report, approval
     const checkout = require(join(root,'helpers/storefrontCheckout.js')).handleStorefront;
     const admin = require(join(root,'endpoints/tarsi_web_admin_POST.js')).handle;
     const drain = require(join(root,'helpers/orderFlowMail.js')).drainOrderMail;
-    const send = (data,isTest=true) => checkout(new Request('https://sandbox.example/_api/test',{
-      method:'POST',headers:isTest?{'x-tarsi-preview':'checkout-v1'}:{'x-tarsi-storefront':'storefront-v1'},body:JSON.stringify(data)
+    const send = (data,isTest=true,authorized=true) => checkout(new Request('https://sandbox.example/_api/test',{
+      method:'POST',headers:{...(isTest?{'x-tarsi-preview':'checkout-v1'}:{'x-tarsi-storefront':'storefront-v1'}),
+        Authorization:authorized?'Bearer '+process.env[isTest?'TARSI_PREVIEW_STOREFRONT_KEY':'TARSI_STOREFRONT_KEY']:''},body:JSON.stringify(data)
     }),isTest,true);
     const manage = (data, authorized=true) => admin(new Request('https://sandbox.example/_api/admin',{
       method:'POST',headers:{origin:'https://sandbox.example',...(authorized?{'x-test-admin':'1'}:{})},body:JSON.stringify({test:true,...data})
@@ -97,6 +101,7 @@ test('Floot v2 over isolated PostgreSQL: checkout, reservation, report, approval
     const fixture = (size='M')=>({mode:'checkout',key:randomUUID(),items:[{id:0,size,qty:1}],acceptedTotal:399,
       customer:{name:'Cliente aislado',email:'cliente@example.com',phone:'5555550000'},delivery:'Entrega en Querétaro',
       address:{postal_code:'76099',area_level3:'Centro',street:'Calle ficticia 1'}});
+    assert.equal((await send(fixture(),true,false)).status,403);
     assert.equal((await send(fixture('XS'))).status,400);
     assert.equal((await send(fixture())).status,503);
     await pg.exec("INSERT INTO tarsi_blank_policy VALUES(true,true); INSERT INTO tarsi_blank_stock VALUES(true,'M',1,0,NULL),(true,'S',2,0,NULL)");
@@ -157,6 +162,15 @@ test('Floot v2 over isolated PostgreSQL: checkout, reservation, report, approval
     assert.equal(mails.filter(message=>/Sigue con tu pedido TARSI-/.test(message)).length,1);
     assert.equal((await pg.query("SELECT count(*)::int AS n FROM tarsi_mail_outbox WHERE kind='reminder' AND state='accepted'")).rows[0].n,1);
     assert.equal((await drain(true)).processed,0);
+    assert.equal((await manage({action:'revoke-recovery',id})).status,200);
+    assert.equal((await send({mode:'recover',key:primary.key})).status,404);
+    assert.equal((await manage({action:'reissue-recovery',id})).status,200);
+    assert.equal((await manage({action:'reissue-recovery',id})).status,409);
+    assert.match(mails.at(-1),/Nuevo enlace de tu pedido TARSI-/);
+    const recoveredKey=(await pg.query('SELECT recovery_key::text FROM tarsi_order_flow WHERE order_id=$1',[id])).rows[0].recovery_key;
+    assert.notEqual(recoveredKey,primary.key);
+    assert.equal((await send({mode:'recover',key:primary.key})).status,404);
+    assert.equal((await (await send({mode:'recover',key:recoveredKey})).json()).number,receipt.number);
     await pg.exec("INSERT INTO tarsi_live_checkout_config(enabled,bank,holder,clabe) VALUES(true,'Banco de prueba','Titular de prueba','000000000000000000')");
     await pg.exec("INSERT INTO tarsi_blank_policy VALUES(false,true); INSERT INTO tarsi_blank_stock VALUES(false,'M',1,0,NULL)");
     const national = {...fixture(),delivery:'Envío nacional',acceptedTotal:549};
@@ -186,6 +200,90 @@ test('Floot v2 over isolated PostgreSQL: checkout, reservation, report, approval
     }
     await db.destroy();
     await pg.close();
+    rmSync(root,{recursive:true,force:true});
+  }
+});
+
+test('PostgreSQL concurrent connections serialize the last blank and its assignment', {
+  skip: !dependencies || process.env.TARSI_FLOOT_TEST_CONCURRENCY !== '1'
+}, async () => {
+  const {createServer} = require('node:net');
+  const {once} = require('node:events');
+  const {setTimeout: delay} = require('node:timers/promises');
+  const modules = resolve(dependencies);
+  const EmbeddedPostgres = require(join(modules,'embedded-postgres/dist/index.js')).default;
+  const portFinder = createServer().listen(0,'127.0.0.1');
+  await once(portFinder,'listening');
+  const {port} = portFinder.address();
+  await new Promise(resolve=>portFinder.close(resolve));
+  const root = mkdtempSync(join(tmpdir(),'tarsi-postgres-'));
+  const logs = [];
+  const pg = new EmbeddedPostgres({databaseDir:join(root,'data'),port,persistent:false,onLog:entry=>logs.push(String(entry)),
+    onError:entry=>logs.push(String(entry)),postgresFlags:['-c','listen_addresses=127.0.0.1','-c','unix_socket_directories='+root]});
+  const clients = [];
+  let started = false;
+  try {
+    await pg.initialise();
+    await pg.start();
+    started = true;
+    for(let index=0;index<3;index++){
+      const client=pg.getPgClient();
+      await client.connect();
+      clients.push(client);
+    }
+    const [observer,first,second]=clients;
+    await observer.query('CREATE TABLE users(id integer PRIMARY KEY);');
+    for(const name of ['migration','order-flow-v2']) await observer.query(readFileSync('floot/'+name+'.sql','utf8'));
+    await observer.query("INSERT INTO tarsi_blank_policy VALUES(true,true); INSERT INTO tarsi_blank_stock VALUES(true,'M',1,0,NULL)");
+    async function create(client,design){
+      const key=randomUUID();
+      const result=await client.query(`INSERT INTO tarsi_web_orders(idempotency_key,request_digest,payload,is_test,number)
+        VALUES($1,'synthetic',$2,true,'TARSI-'||lpad(nextval('tarsi_short_order_seq')::text,6,'0')) RETURNING id,number`,
+        [key,{items:[{id:design,size:'M',qty:1}]}]);
+      const order=result.rows[0];
+      await client.query('INSERT INTO tarsi_order_flow(order_id,recovery_key) VALUES($1,$2)',[order.id,key]);
+      return order;
+    }
+    async function allocate(client,order,assign){
+      return (await client.query('SELECT tarsi_allocate_blanks($1,$2) AS ok',[order.id,assign])).rows[0].ok;
+    }
+    async function waitForLock(client){
+      const pid=client.processID;
+      for(let count=0;count<100;count++){
+        const activity=await observer.query('SELECT wait_event_type FROM pg_stat_activity WHERE pid=$1',[pid]);
+        if(activity.rows[0]?.wait_event_type==='Lock') return;
+        await delay(10);
+      }
+      throw new Error('Second PostgreSQL session did not wait for a lock');
+    }
+    await first.query('BEGIN');
+    const reserved=await create(first,0);
+    assert.equal(await allocate(first,reserved,false),true);
+    await second.query('BEGIN');
+    const contender=await create(second,1);
+    const rejected=allocate(second,contender,false);
+    await waitForLock(second);
+    await first.query('COMMIT');
+    assert.equal(await rejected,false);
+    await second.query('ROLLBACK');
+    assert.notEqual(reserved.number,contender.number);
+    assert.deepEqual((await observer.query('SELECT number FROM tarsi_web_orders')).rows,[{number:reserved.number}]);
+    await first.query('BEGIN');
+    assert.equal(await allocate(first,reserved,true),true);
+    await second.query('BEGIN');
+    const duplicate=allocate(second,reserved,true);
+    await waitForLock(second);
+    await first.query('COMMIT');
+    assert.equal(await duplicate,true);
+    await second.query('COMMIT');
+    assert.equal((await observer.query('SELECT on_hand FROM tarsi_blank_stock')).rows[0].on_hand,0);
+    assert.equal((await observer.query('SELECT count(*)::int AS n FROM tarsi_blank_movements')).rows[0].n,1);
+  } catch(error) {
+    if(!started && logs.length) throw new Error(logs.join('\n'),{cause:error});
+    throw error;
+  } finally {
+    await Promise.allSettled(clients.map(client=>client.end()));
+    if(started) await pg.stop();
     rmSync(root,{recursive:true,force:true});
   }
 });

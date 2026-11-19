@@ -15,7 +15,14 @@ test('Floot preview matches the active product names and prices', () => {
   assert.ok(source.includes(subtotal.toString().replace('quantity =>', '(quantity: number) =>')));
 });
 
-test('The new preview forwards reports, renewals, quotes and checkout to Floot without Netlify secrets', async t => {
+test('The new preview forwards reports, renewals, quotes and checkout to Floot with server-only authentication', async t => {
+  const key = 'synthetic-preview-auth-key-at-least-32';
+  const savedKey = process.env.TARSI_PREVIEW_STOREFRONT_KEY;
+  process.env.TARSI_PREVIEW_STOREFRONT_KEY = key;
+  t.after(() => {
+    if (savedKey === undefined) delete process.env.TARSI_PREVIEW_STOREFRONT_KEY;
+    else process.env.TARSI_PREVIEW_STOREFRONT_KEY = savedKey;
+  });
   const saved = process.env.TARSI_FLOOT_PREVIEW_ORIGIN;
   t.after(() => {
     if (saved === undefined) delete process.env.TARSI_FLOOT_PREVIEW_ORIGIN;
@@ -27,7 +34,7 @@ test('The new preview forwards reports, renewals, quotes and checkout to Floot w
     calls.push(JSON.parse(request.body));
     assert.match(url, /\.sandbox\.floot\.app\/_api\/tarsi_preview_checkout_v2$/);
     assert.equal(request.headers['X-Tarsi-Preview'], 'checkout-v1');
-    assert.equal(request.headers.Authorization, undefined);
+    assert.equal(request.headers.Authorization, 'Bearer ' + key);
     return Response.json({ok:true});
   };
   const request = body => ({...event('POST',{body}), rawUrl:'https://deploy-preview-7--tarsi-skydropx.netlify.app/.netlify/functions/test'});
@@ -40,13 +47,20 @@ test('The new preview forwards reports, renewals, quotes and checkout to Floot w
   assert.equal(unpack(await submit({env:{},fetcher})(event('POST',{body:{}}))).status, 400);
 });
 
-test('Published checkout routes to Floot while the carrier endpoint stays independent', async () => {
+test('Published checkout routes to Floot while the carrier endpoint stays independent', async t => {
+  const key = 'synthetic-live-auth-key-at-least-32';
+  const previous = process.env.TARSI_STOREFRONT_KEY;
+  process.env.TARSI_STOREFRONT_KEY = key;
+  t.after(() => {
+    if (previous === undefined) delete process.env.TARSI_STOREFRONT_KEY;
+    else process.env.TARSI_STOREFRONT_KEY = previous;
+  });
   const checkoutQuote = require('../netlify/functions/checkout-quote').createHandler;
   const calls = [];
   const fetcher = async (url, request) => {
     assert.equal(url, 'https://tarsi-control-ventas.floot.app/_api/tarsi_live_checkout_v2');
     assert.equal(request.headers['X-Tarsi-Storefront'], 'storefront-v1');
-    assert.equal(request.headers.Authorization, undefined);
+    assert.equal(request.headers.Authorization, 'Bearer ' + key);
     calls.push(JSON.parse(request.body).mode);
     return Response.json({ok:true});
   };

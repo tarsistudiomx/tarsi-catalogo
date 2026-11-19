@@ -2,6 +2,7 @@ BEGIN;
 CREATE SEQUENCE IF NOT EXISTS tarsi_short_order_seq AS bigint START 1 NO CYCLE;
 CREATE TABLE IF NOT EXISTS tarsi_order_flow (
   order_id uuid PRIMARY KEY REFERENCES tarsi_web_orders(id),
+  recovery_key uuid NOT NULL UNIQUE,
   recover_until timestamptz NOT NULL DEFAULT (now()+interval '30 days'),
   revoked_at timestamptz,
   hold_until timestamptz,
@@ -54,7 +55,7 @@ CREATE TABLE IF NOT EXISTS tarsi_transfer_reports (
 );
 CREATE TABLE IF NOT EXISTS tarsi_mail_outbox (
   order_id uuid NOT NULL REFERENCES tarsi_web_orders(id),
-  kind text NOT NULL CHECK(kind IN ('registered','reminder','reported','confirmed')),
+  kind text NOT NULL CHECK(kind IN ('registered','reminder','reported','confirmed','recovery')),
   due_at timestamptz NOT NULL,
   attempts integer NOT NULL DEFAULT 0 CHECK(attempts BETWEEN 0 AND 5),
   state text NOT NULL DEFAULT 'pending' CHECK(state IN ('pending','sending','accepted','suppressed','review','failed')),

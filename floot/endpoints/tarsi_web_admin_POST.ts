@@ -71,7 +71,21 @@ export async function handle(request: Request) {
     if(input.action==='revoke-recovery'){
       if(!order.isFlow) return {error:'Este pedido histórico no tiene un enlace revocable.',status:409};
       await sql`UPDATE tarsi_order_flow SET revoked_at=coalesce(revoked_at,now()) WHERE order_id=${orderId}::uuid`.execute(trx);
+      await sql`UPDATE tarsi_mail_outbox SET state='suppressed' WHERE order_id=${orderId}::uuid
+        AND kind IN ('reminder','recovery') AND state IN ('pending','sending')`.execute(trx);
       await history('Enlace de recuperación revocado');
+      return null;
+    }
+    if(input.action==='reissue-recovery'){
+      if(!order.isFlow) return {error:'Este pedido histórico no admite reemisión.',status:409};
+      const changed=await sql`UPDATE tarsi_order_flow SET recovery_key=gen_random_uuid(),revoked_at=NULL,
+        recover_until=now()+interval '30 days' WHERE order_id=${orderId}::uuid
+        AND (revoked_at IS NOT NULL OR recover_until<=now()) RETURNING order_id`.execute(trx);
+      if(!changed.rows.length) return {error:'El enlace existente todavía está activo.',status:409};
+      await sql`INSERT INTO tarsi_mail_outbox(order_id,kind,due_at) VALUES(${orderId}::uuid,'recovery',now())
+        ON CONFLICT(order_id,kind) DO UPDATE SET due_at=now(),state='pending',attempts=0,claimed_at=NULL,
+          accepted_at=NULL,provider_id=NULL,last_error=NULL`.execute(trx);
+      await history('Enlace de recuperación reemitido');
       return null;
     }
     if (input.action === 'adjust') {
@@ -161,6 +175,6 @@ export async function handle(request: Request) {
       FROM tarsi_web_orders o WHERE f.order_id=o.id AND o.id=${orderId}::uuid AND o.paid_at IS NULL`.execute(db);
     return {error:'No hay existencias suficientes. El pago queda para resolver y no pasa a producción.',status:409};
   });
-  if(!outcome && input.action==='confirm-payment') await drainOrderMail(input.test,orderId).catch(()=>{});
+  if(!outcome && ['confirm-payment','reissue-recovery'].includes(input.action)) await drainOrderMail(input.test,orderId).catch(()=>{});
   return outcome ? json({error: outcome.error}, outcome.status) : json({ok:true});
 }

@@ -10,7 +10,7 @@ export async function reportTransfer(input:z.infer<typeof transferReport>,isTest
     const order=(await sql<{id:string;status:string;total:number;date:string}>`SELECT o.id,o.status,(o.payload->>'total')::int AS total,
       (o.created_at AT TIME ZONE 'America/Mexico_City')::date::text AS date
       FROM tarsi_web_orders o JOIN tarsi_order_flow f ON f.order_id=o.id
-      WHERE o.idempotency_key=${input.key}::uuid AND o.is_test=${isTest} AND f.revoked_at IS NULL AND f.recover_until>now()
+      WHERE f.recovery_key=${input.key}::uuid AND o.is_test=${isTest} AND f.revoked_at IS NULL AND f.recover_until>now()
       FOR UPDATE OF o`.execute(trx)).rows[0];
     if(!order)return {status:404,error:'Este enlace ya no está activo. Contacta a TARSI con tu folio.'};
     if(!['Pendiente de pago','Pago por verificar','Cancelado'].includes(order.status))

@@ -1,3 +1,4 @@
+import {createHash} from 'node:crypto';
 import {getGoogleAccessToken} from '@floot/google-integrations';
 import {sql} from 'kysely';
 import {db} from './db';
@@ -5,9 +6,9 @@ import type {z} from 'zod';
 import type {payload} from '../endpoints/tarsi_web_order_POST.schema';
 
 const inbox='tarsi.studiomx@gmail.com';
-type Kind='registered'|'reminder'|'reported'|'confirmed';
+type Kind='registered'|'reminder'|'reported'|'confirmed'|'recovery';
 type Order=z.infer<typeof payload>;
-type Work={orderId:string;kind:Kind;attempts:number};
+type Work={orderId:string;kind:Kind;attempts:number;claimedAt:string};
 export async function drainOrderMail(isTest:boolean,orderId?:string){
   const env=process.env as Record<string,string|undefined>;
   const storefront=isTest?env.TARSI_TEST_STOREFRONT_URL:'https://tarsi-skydropx.netlify.app/';
@@ -26,20 +27,23 @@ export async function drainOrderMail(isTest:boolean,orderId?:string){
       ${orderId?sql`AND m.order_id=${orderId}::uuid`:sql``}
     ORDER BY m.due_at LIMIT ${orderId?1:3} FOR UPDATE OF m SKIP LOCKED
   ) UPDATE tarsi_mail_outbox m SET state='sending',claimed_at=now(),attempts=m.attempts+1
-    FROM next WHERE m.order_id=next.order_id AND m.kind=next.kind RETURNING m.order_id,m.kind,m.attempts`.execute(db);
+    FROM next WHERE m.order_id=next.order_id AND m.kind=next.kind RETURNING m.order_id,m.kind,m.attempts,m.claimed_at::text`.execute(db);
   for(const job of claimed.rows){
     await db.transaction().execute(async trx=>{
       const row=(await sql<{number:string;status:string;key:string;payload:string;eligible:boolean;reported:boolean}>`SELECT o.number,o.status,
-        o.idempotency_key::text AS key,o.payload::text,
+        f.recovery_key::text AS key,o.payload::text,
         f.revoked_at IS NULL AND f.recover_until>now() AS eligible,r.order_id IS NOT NULL AS reported
         FROM tarsi_web_orders o JOIN tarsi_order_flow f ON f.order_id=o.id LEFT JOIN tarsi_transfer_reports r ON r.order_id=o.id
         WHERE o.id=${job.orderId}::uuid FOR UPDATE OF o`.execute(trx)).rows[0];
+      const valid=(await sql`SELECT 1 FROM tarsi_mail_outbox WHERE order_id=${job.orderId}::uuid
+        AND kind=${job.kind} AND claimed_at=${job.claimedAt}::timestamptz AND state='sending' FOR UPDATE`.execute(trx)).rows.length;
+      if(!valid)return;
       const update=(state:string,reason:string|null=null,id:string|null=null)=>sql`UPDATE tarsi_mail_outbox SET
         state=${state},last_error=${reason},provider_id=${id},accepted_at=CASE WHEN ${state}='accepted' THEN now() ELSE NULL END,
         due_at=CASE WHEN ${state}='pending' THEN now()+(${job.attempts}*5)*interval '1 minute' ELSE due_at END
         WHERE order_id=${job.orderId}::uuid AND kind=${job.kind} AND state='sending'`.execute(trx);
       if(!row || (job.kind==='reminder' && (row.status!=='Pendiente de pago'||row.reported||!row.eligible)) ||
-        (job.kind==='registered' && (!row.eligible||row.status==='Cancelado'))) {await update('suppressed');return;}
+        (job.kind==='registered' && (!row.eligible||row.status==='Cancelado')) || (job.kind==='recovery' && !row.eligible)) {await update('suppressed');return;}
       const data=JSON.parse(row.payload) as Order;
       const to=isTest||job.kind==='reported'?inbox:data.customer.email;
       if(!/^[^\s@<>]+@[^\s@<>]+\.[^\s@<>]+$/.test(to)){await update('failed','Correo del cliente inválido.');return;}
@@ -55,6 +59,9 @@ export async function drainOrderMail(isTest:boolean,orderId?:string){
         body=[data.customer.name,'Estado: SIN REPORTE DE PAGO',summary,'Total: $'+data.total+' MXN',
           bank.bank,bank.holder,'CLABE: '+bank.clabe,'Concepto: '+row.number,
           'Antes de transferir, abre tu pedido para consultar la disponibilidad y la reserva. Después registra tu transferencia.', 'Continuar mi pedido: '+link.href].join('\n');
+      } else if(job.kind==='recovery'){
+        subject='Nuevo enlace de tu pedido '+row.number;
+        body='Consulta el pedido original y el estado de tu transferencia.\nContinuar mi pedido: '+link.href;
       } else if(job.kind==='reminder'){
         subject='Sigue con tu pedido '+row.number;
         body='¿Ya realizaste tu transferencia? Si ya pagaste, recuerda registrar los datos para que podamos verificar tu pedido.\n'+link.href;
@@ -66,8 +73,9 @@ export async function drainOrderMail(isTest:boolean,orderId?:string){
         subject='Transferencia por verificar '+row.number;
         body='Se recibió un reporte para '+row.number+'. Revisa sus datos en el Dashboard y verifica el depósito en Nu.';
       }
+      const messageVersion=job.kind==='recovery'?'-'+createHash('sha256').update(row.key).digest('hex').slice(0,16):'';
       const raw=Buffer.from(['From: '+inbox,'To: '+to,'Subject: '+(isTest?'[PRUEBA] ':'')+subject,
-        'Message-ID: <tarsi-'+job.orderId+'-'+job.kind+'@gmail.com>',
+        'Message-ID: <tarsi-'+job.orderId+'-'+job.kind+messageVersion+'@gmail.com>',
         'MIME-Version: 1.0','Content-Type: text/plain; charset=UTF-8','Content-Transfer-Encoding: base64','',
         Buffer.from(body).toString('base64').match(/.{1,76}/g)?.join('\r\n')||''].join('\r\n')).toString('base64url');
       try{

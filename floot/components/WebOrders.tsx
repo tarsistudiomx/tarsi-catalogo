@@ -52,7 +52,6 @@ export function WebOrders({onRevenue, tab, openOrder}: {tab: string; openOrder: 
   const queue = orders.filter(o => o.queuedAt && ['Pagado','En preparación'].includes(o.status))
     .sort((a,b) => (a.queuedAt || '').localeCompare(b.queuedAt || '') || a.id.localeCompare(b.id));
   const pending = orders.filter(awaitingPayment);
-  const paid = orders.filter(order => !awaitingPayment(order) && order.status !== 'Cancelado');
   const dispatching = orders.filter(order => order.status === 'Enviado');
   const list=matched??orders;
   const unreported=list.filter(order=>order.status==='Pendiente de pago');
@@ -195,9 +194,12 @@ export function WebOrders({onRevenue, tab, openOrder}: {tab: string; openOrder: 
         {order.recoverUntil&&!order.revokedAt&&<Button variant="outline" disabled={busy} onClick={()=>{
           if(confirm('Revocar el enlace anterior de este pedido.'))void run(()=>apply(order,{action:'revoke-recovery'}));
         }}>Revocar enlace</Button>}
+        {order.recoverUntil&&(order.revokedAt||Date.parse(order.recoverUntil)<=Date.now())&&<Button variant="outline" disabled={busy} onClick={()=>{
+          if(confirm('Generar un enlace nuevo y enviarlo al correo del cliente.'))void run(()=>apply(order,{action:'reissue-recovery'}));
+        }}>Reenviar enlace</Button>}
       </details>
       <details><summary>Historial</summary><ul>{order.history?.map((event, index) =>
-        <li key={index}>{event.status} · {new Date(event.date).toLocaleString('es-MX')} · {event.actorId ?? (index === 0 ? 'Tienda web' : 'Prueba automatizada')}</li>)}</ul></details>
+        <li key={index}>{event.status} · {new Date(event.date).toLocaleString('es-MX')} · {event.actorId ?? 'Tienda web'}</li>)}</ul></details>
       </div>
     </article>;
   }
