@@ -231,18 +231,12 @@ test('Navegador y sandbox Floot: entrega local, aviso y ventana bancaria', {
   skip: process.env.TARSI_TEST_LIVE_CHECKOUT !== '1'
 }, async () => {
   const {createHandler: orderHandler} = require('../netlify/functions/submit-order');
-  const configured = Object.fromEntries([
-    'TARSI_DASHBOARD_TOKEN', 'TARSI_QUOTE_SECRET', 'TARSI_BANK_NAME', 'TARSI_BANK_HOLDER', 'TARSI_BANK_CLABE'
-  ].map(key => [key, process.env[key]]));
-  const submit = orderHandler({catalog, env: {
-    ...configured,
-    TARSI_DASHBOARD_URL: 'https://66f62c32-15c0-4546-ba6e-bce0efe72d71.sandbox.floot.app/_api/tarsi_web_order'
-  }});
+  const submit = orderHandler({env: {}});
   const page = await browser.newPage({viewport: {width: 768, height: 1024}});
   try {
     await page.route('**/.netlify/functions/submit-order', async route => {
       const source = event('POST', {body: route.request().postData()});
-      source.rawUrl = route.request().url();
+      source.rawUrl = 'https://deploy-preview-6--tarsi-skydropx.netlify.app/.netlify/functions/submit-order';
       const response = await submit(source);
       await route.fulfill({status: response.statusCode, headers: response.headers, body: response.body});
     });

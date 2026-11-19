@@ -4,6 +4,7 @@ const {createHash} = require('node:crypto');
 const {products, unitPrice, subtotal, isLine, maxQuantity, normalize} = require('../../shop');
 const {endpoint, readBody, HttpError} = require('../lib/http');
 const {postal} = require('../lib/postal');
+const {useFlootPreview, flootPreview} = require('../lib/floot-preview');
 const {verifyQuote} = require('../lib/quote-proof');
 
 const invalid = message => new HttpError(400, 'INVALID_ORDER', message);
@@ -52,6 +53,7 @@ function createHandler({env = process.env, catalog = postal, fetcher = fetch} = 
   return endpoint(['POST'], async event => {
     if ((event.body?.length ?? 0) > 16000) throw invalid('El pedido excede el tamaño permitido.');
     const body = readBody(event);
+    if (useFlootPreview(event)) return flootPreview(body, body.recover === true ? 'recover' : 'checkout', fetcher);
     if (typeof body.key !== 'string' || !uuid.test(body.key)) throw invalid('No se pudo identificar el intento.');
     const order = body.recover === true ? null : readOrder(body);
     if (!env.TARSI_DASHBOARD_URL || !env.TARSI_DASHBOARD_TOKEN || !(env.TARSI_QUOTE_SECRET?.length >= 32)) {
