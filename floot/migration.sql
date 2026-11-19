@@ -4,7 +4,7 @@ CREATE TABLE IF NOT EXISTS tarsi_web_orders (
   idempotency_key uuid NOT NULL,
   request_digest text NOT NULL,
   created_at timestamptz NOT NULL DEFAULT now(),
-  payload jsonb NOT NULL,
+  payload jsonb NOT NULL CONSTRAINT tarsi_web_orders_payload_object CHECK (jsonb_typeof(payload) = 'object'),
   status text NOT NULL DEFAULT 'Pendiente de pago' CHECK (status IN (
     'Pendiente de pago','Pago por verificar','Pagado','En preparación','Enviado','Entregado','Cancelado')),
   paid_at timestamptz,

@@ -170,3 +170,58 @@ test('Chromium escritorio: CP desconocido, varias colonias, error de tarifas y c
     await page.close();
   }
 });
+
+test('Checkout móvil: datos incompletos, doble clic, red, reintento, confirmación y enlaces', async () => {
+  const page = await browser.newPage({viewport: {width: 390, height: 844}, isMobile: true, hasTouch: true});
+  const requests = [];
+  try {
+    await page.route('**/.netlify/functions/submit-order', async route => {
+      const body = route.request().postDataJSON();
+      requests.push(body);
+      if (!body.customer.name) return route.fulfill({status: 400, json: {error: 'Revisa tu nombre.'}});
+      if (requests.length === 2) return route.abort('failed');
+      return route.fulfill({json: {number: 'TARSI-PRUEBA', status: 'Pendiente de pago',
+        items: [{name: 'The Amazing Spider-Man', size: 'M', qty: 1}], subtotal: 399, shipping: 140, total: 539,
+        transfer: {bank: 'Banco de prueba', holder: 'Titular de prueba', clabe: '000000000000000000'}}});
+    });
+    await page.goto(base);
+    await selectProduct(page, 0, 'M', 1);
+    await page.click('#navCart');
+    await page.click('#submitOrder');
+    await waitText(page, '#orderStatus', 'Revisa tu nombre');
+    await page.fill('#buyer', 'Cliente de prueba');
+    await page.fill('#phone', '5555550000');
+    await page.selectOption('#delivery', 'Envío nacional');
+    await page.fill('#zipCode', '01000');
+    await page.waitForFunction(() => document.querySelector('#state').value === 'Ciudad de México');
+    await page.fill('#neighborhood', 'San Ángel');
+    await page.fill('#street', 'Calle de prueba 123');
+    await page.click('#quoteShipping');
+    await waitText(page, '#totals .final', '$539 MXN');
+    await page.locator('#submitOrder').evaluate(button => {button.click(); button.click();});
+    await waitText(page, '#orderStatus', 'Reintenta con el mismo pedido');
+    assert.equal(requests.length, 2);
+    assert.equal(await page.locator('.cart-line').count(), 1);
+    await page.click('#submitOrder');
+    await waitText(page, '#orderConfirmation', '¡RECIBIMOS TU PEDIDO!');
+    assert.equal(requests.length, 3);
+    assert.equal(requests[1].key, requests[2].key);
+    assert.equal(await page.locator('.cart-line').count(), 0);
+    assert.match(await page.locator('#orderReceipt').innerText(), /TARSI-PRUEBA[\s\S]*Pendiente de pago[\s\S]*\$539 MXN/);
+    assert.equal(await page.locator('#proofInstagram').getAttribute('href'), 'https://www.instagram.com/tarsi.mx/');
+    await page.evaluate(() => {
+      Object.defineProperty(navigator, 'share', {value: undefined, configurable: true});
+      Object.defineProperty(navigator, 'clipboard', {value: {writeText: value => {window.copied = value;}}, configurable: true});
+    });
+    await page.click('#copyOrderNumber');
+    assert.equal(await page.evaluate(() => window.copied), 'TARSI-PRUEBA');
+    await page.click('#shareReceipt');
+    await waitText(page, '#toast', 'PEDIDO COPIADO');
+    const copied = await page.evaluate(() => window.copied);
+    assert.match(copied, /TARSI-PRUEBA/);
+    assert.doesNotMatch(copied, /SKYDROPX|5555550000/);
+    assert.equal(await page.locator('#cartOverlay .modal').evaluate(modal => modal.scrollWidth <= modal.clientWidth), true);
+  } finally {
+    await page.close();
+  }
+});

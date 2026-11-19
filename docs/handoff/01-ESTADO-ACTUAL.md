@@ -1,3 +1,5 @@
 # Estado actual
 
 Rama de tienda: `feat/tarsi-checkout-dashboard`, basada en la actualización de fotos y zoom del PR #4. Floot encontrado como Tarsi — Control de Ventas (66f62c32-15c0-4546-ba6e-bce0efe72d71). No hay tabla de pedidos web previa. Floot no habilita ramas para esta cuenta. Producción sujeta a aprobación.
+
+PR borrador [#5](https://github.com/tarsistudiomx/tarsi-catalogo/pull/5). [Deploy Preview](https://deploy-preview-5--tarsi-skydropx.netlify.app/) protegida por sesión. Se configuraron URL y credenciales nuevas únicamente para deploy-preview. Los endpoints de Floot están en su editor, con persistencia en la base real y modo separado de prueba. No se publicó el Dashboard ni se mezcló la tienda.

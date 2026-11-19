@@ -31,16 +31,18 @@ function readOrder(body) {
   const street = field(body.address?.street, 200);
   const postal_code = field(body.address?.postal_code, 5);
   const area_level3 = field(body.address?.area_level3, 120);
+  const area_level1 = field(body.address?.area_level1, 120);
+  const area_level2 = field(body.address?.area_level2, 120);
   const delivery = body.delivery;
   if (name.length < 2 || name.length > 120 || !/^\d{10}$/.test(phone) ||
       email.length > 254 || (email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email))) throw invalid('Revisa tu nombre, teléfono y correo.');
-  if (street.length < 2 || street.length > 200 || !/^\d{5}$/.test(postal_code) || !area_level3 || area_level3.length > 120) {
+  if (street.length < 2 || street.length > 200 || !/^\d{5}$/.test(postal_code) || !area_level3 || area_level3.length > 120 || area_level1.length > 120 || area_level2.length > 120) {
     throw invalid('Completa tu calle, número, código postal y colonia.');
   }
   if (!['Envío nacional', 'Entrega en Querétaro'].includes(delivery)) throw invalid('Selecciona una modalidad de entrega.');
   const merchandise = subtotal(quantity);
   return {
-    customer: {name, phone, email}, address: {street, postal_code, area_level3}, delivery, items, quantity,
+    customer: {name, phone, email}, address: {street, postal_code, area_level1, area_level2, area_level3}, delivery, items, quantity,
     subtotal: merchandise, discount: quantity * unitPrice - merchandise,
     promotions: {threePack: Math.floor(quantity / 3), twoPack: quantity % 3 === 2 ? 1 : 0}
   };

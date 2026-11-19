@@ -15,16 +15,16 @@ export async function handle(request: Request) {
   if (!parsed.success) return json({error: 'Solicitud inválida'}, 400);
   const input = parsed.data;
   if (input.action === 'list') {
-    const orders = await sql`SELECT o.id, o.number, o.created_at, o.status, o.paid_at, o.tracking,
-      o.payload - 'skydropx' AS details,
+    const orders = await sql<{details: string; history: string | null}>`SELECT o.id, o.number, o.created_at, o.status, o.paid_at, o.tracking,
+      (o.payload - 'skydropx')::text AS details,
       (SELECT jsonb_agg(jsonb_build_object('status', h.status, 'date', h.changed_at, 'actorId', h.actor_id)
-        ORDER BY h.id) FROM tarsi_web_order_history h WHERE h.order_id = o.id) AS history
+        ORDER BY h.id) FROM tarsi_web_order_history h WHERE h.order_id = o.id)::text AS history
       FROM tarsi_web_orders o WHERE o.is_test = ${input.test}
       ORDER BY o.created_at DESC LIMIT 100`.execute(db);
     const result = await sql<{revenue: number; paid: number}>`SELECT
       coalesce(sum((payload->>'total')::integer), 0)::float8 AS revenue, count(*)::integer AS paid
       FROM tarsi_web_orders WHERE NOT is_test AND paid_at IS NOT NULL`.execute(db);
-    return json({orders: orders.rows, ...result.rows[0]});
+    return json({orders: orders.rows.map(row => ({...row, details: JSON.parse(row.details), history: row.history ? JSON.parse(row.history) : []})), ...result.rows[0]});
   }
   if (!transitions[input.expected].includes(input.status) || (input.status === 'Enviado' && !input.tracking)) {
     return json({error: 'Transición inválida o falta la guía'}, 400);

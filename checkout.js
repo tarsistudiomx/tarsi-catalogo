@@ -15,7 +15,8 @@
     return {
       items: cart.map(({id, size, qty}) => ({id, size, qty})),
       customer: {name: value('buyer'), phone: value('phone'), email: value('buyerEmail')},
-      address: {street: value('street'), postal_code: value('zipCode'), area_level3: value('neighborhood')},
+      address: {street: value('street'), postal_code: value('zipCode'), area_level1: value('state'),
+        area_level2: value('city'), area_level3: value('neighborhood')},
       delivery: value('delivery')
     };
   }

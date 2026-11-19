@@ -6,7 +6,7 @@ import type {payload} from '../endpoints/tarsi_web_order_POST.schema';
 import type {z} from 'zod';
 
 type Order = {
-  id: string; number: string; status: OrderStatus; created_at: string; tracking: string | null;
+  id: string; number: string; status: OrderStatus; createdAt: string; tracking: string | null;
   details: Omit<z.infer<typeof payload>, 'skydropx'>;
   history: {status: OrderStatus; date: string; actorId: number | null}[];
 };
