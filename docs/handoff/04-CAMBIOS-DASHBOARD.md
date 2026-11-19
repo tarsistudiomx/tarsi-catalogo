@@ -13,3 +13,7 @@ La migración aditiva `floot/migration.sql` crea `tarsi_web_orders` y `tarsi_web
 La sección Pedidos registrados usa filas expandibles por cliente y filtros Pendientes de pago y Pagados. Los cancelados y la conexión Gmail están en paneles plegables. Las actividades de producción siguen en Checklist y abren directamente el pedido correspondiente.
 
 Los pedidos pagados incluyen un formulario plegable para registrar devoluciones y cobros adicionales ya confirmados en el banco. La tabla `tarsi_order_adjustments` guarda importe, motivo, referencia, fecha y responsable. Los ingresos web reflejan el neto; monto original e historial se conservan. La migración aditiva se aplicó en Floot.
+
+## Operaciones y finanzas
+
+El menú Ventas y gastos reemplaza el Asistente de ventas. Mis actividades reúne cobro, preparación y seguimiento de entregas con enlaces a los pedidos. La captura de clientes manuales permanece. El estado de resultados mensual de caja muestra cobros web por fecha de pago, devoluciones/ajustes por fecha del movimiento y gastos pagados por fecha de registro contable. Se conservan la categoría, concepto, responsable y motivo de anulación. Los pedidos de prueba, pendientes y clientes manuales quedan fuera de este reporte; la captura de Publicidad mantiene su indicador de campaña separado.

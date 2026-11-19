@@ -45,6 +45,7 @@ export function WebOrders({onRevenue, tab, openOrder}: {tab: string; openOrder: 
     .sort((a,b) => (a.queuedAt || '').localeCompare(b.queuedAt || '') || a.id.localeCompare(b.id));
   const pending = orders.filter(awaitingPayment);
   const paid = orders.filter(order => !awaitingPayment(order) && order.status !== 'Cancelado');
+  const dispatching = orders.filter(order => order.status === 'Enviado');
   const cancelled = orders.filter(order => order.status === 'Cancelado');
   const today = new Intl.DateTimeFormat('en-CA',{timeZone:'America/Mexico_City',year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date());
 
@@ -75,8 +76,14 @@ export function WebOrders({onRevenue, tab, openOrder}: {tab: string; openOrder: 
     finally { setBusy(false); }
   }
 
+  function jump(order: Order) {
+    setView(awaitingPayment(order) ? 'pending' : 'paid');
+    setExpanded(order.id);
+    openOrder(order.id);
+  }
+
   function work(order: Order, index: number) {
-    return <article key={order.id}><p><a href={'#order-'+order.id} onClick={event=>{event.preventDefault(); setView('paid'); setExpanded(order.id); openOrder(order.id);}}>Preparar pedido {order.number}</a> · Cola {index+1} · {order.details.customer.name}</p>
+    return <article key={order.id}><p><a href={'#order-'+order.id} onClick={event=>{event.preventDefault(); jump(order);}}>Preparar pedido {order.number}</a> · Cola {index+1} · {order.details.customer.name}</p>
       <ul>{order.details.items.map(item => <li key={item.id+':'+item.size}>{item.name} · {item.size} × {item.qty}</li>)}</ul>
       <p>Pago {order.paidAt && new Date(order.paidAt).toLocaleString('es-MX')} · Estimado {order.estimatedFrom} a {order.estimatedUntil}
       {order.estimatedUntil < today && !order.preparedAt ? ' · Retrasado' : order.estimatedUntil === today && !order.preparedAt ? ' · Vence hoy' : ''}
@@ -166,8 +173,18 @@ export function WebOrders({onRevenue, tab, openOrder}: {tab: string; openOrder: 
 
   const visible = view === 'pending' ? pending : paid;
   return <section className={styles.root} hidden={!['pedidos','hoy'].includes(tab)}>
-    {tab === 'hoy' && <section className={styles.work}><h3>Mis actividades · Producción</h3>
-      {queue.map(work)}<p role="status">{status}</p></section>}
+    {tab === 'hoy' && <section className={styles.work}><h3>Mis actividades · Pedidos</h3>
+      {test && <p>Pedidos de prueba · excluidos de ventas</p>}
+      {pending.length > 0 && <article><h4>Cobrar o verificar pago ({pending.length})</h4>
+        <ul>{pending.map(order => <li key={order.id}><button type="button" onClick={()=>jump(order)}>{order.details.customer.name} · {money(order.details.total)}</button> · {order.status}</li>)}</ul>
+      </article>}
+      {queue.map(work)}
+      {dispatching.length > 0 && <article><h4>Dar seguimiento a la entrega ({dispatching.length})</h4>
+        <ul>{dispatching.map(order => <li key={order.id}><button type="button" onClick={()=>jump(order)}>{order.details.customer.name} · {order.tracking || 'Entrega local'}</button></li>)}</ul>
+      </article>}
+      {!pending.length&&!queue.length&&!dispatching.length&&<p>No hay actividades de pedidos pendientes.</p>}
+      <Button variant="outline" disabled={busy} onClick={()=>void run(()=>load(test))}>Actualizar actividades</Button>
+      <p role="status">{status}</p></section>}
     <section hidden={tab !== 'pedidos'}>
       <div className={styles.heading}>
         <h3>Pedidos registrados</h3>

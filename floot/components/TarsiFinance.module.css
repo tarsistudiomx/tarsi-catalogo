@@ -1,0 +1,16 @@
+.finance { margin: 22px 0; color: #183c32; }
+.finance header { display:flex; flex-wrap:wrap; justify-content:space-between; align-items:end; gap:12px; }
+.finance h2,.finance h3 { margin: 8px 0; }
+.finance p,.finance small { font-size:.9rem; }
+.metrics { display:grid; grid-template-columns:repeat(auto-fit,minmax(150px,1fr)); gap:10px; }
+.metrics div,.panel,.entries li { padding:13px; background:#faf7ee; border:1px solid #ded5c2; border-radius:12px; }
+.metrics div:last-child { background:#234b3c; color:#fff9ee; }
+.metrics dd { margin:5px 0; font-size:1.3rem; font-weight:700; overflow-wrap:anywhere; }
+.panel summary { cursor:pointer; font-weight:700; }
+.finance form { display:grid; gap:8px; max-width:460px; margin-top:10px; }
+.finance select,.finance label { display:block; width:100%; }
+.finance select { padding:8px; }
+.entries { list-style:none; display:grid; gap:8px; padding:0; }
+.entries li { display:flex; gap:12px; flex-wrap:wrap; align-items:center; }
+.entries div { flex:1; min-width:140px; overflow-wrap:anywhere; }
+.entries small { display:block; }
