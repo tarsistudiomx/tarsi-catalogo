@@ -40,3 +40,7 @@
   .badge { grid-column: 2; font-size: .72rem; }
   .chevron { grid-column: 3; grid-row: 1 / span 2; }
 }
+.adjustment { display: grid; gap: 8px; max-width: 420px; margin-top: 12px; }
+.adjustment label { display: block; }
+.adjustment label > select { display: block; width: 100%; padding: 8px; }
+.adjustment button { justify-self: start; }

@@ -11,6 +11,7 @@ type Order = {
   id: string; number: string; status: OrderStatus; createdAt: string; tracking: string | null;
   paidAt: string | null; queuedAt: string | null; estimatedFrom: string; estimatedUntil: string; startedAt: string | null; preparedAt: string | null; paymentReference: string | null; paymentNote: string | null;
   details: Omit<z.infer<typeof payload>, 'skydropx'>;
+  adjustments: {cents:number; reference:string; reason:string; date:string; actorId:number}[];
   history: {status: OrderStatus; date: string; actorId: number | null}[];
 };
 const awaitingPayment = (order: Order) => order.status === 'Pendiente de pago' || order.status === 'Pago por verificar';
@@ -128,6 +129,35 @@ export function WebOrders({onRevenue, tab, openOrder}: {tab: string; openOrder: 
       {order.status === 'En preparación' && !order.preparedAt && <Button disabled={busy} onClick={() =>
         void run(() => apply(order,{action:'prepare'}))}>Marcar preparado</Button>}
       </div>
+      {order.paidAt && <details className={styles.settings}><summary>Devoluciones y ajustes</summary>
+        {(order.adjustments || []).map(item => <p key={item.reference}>
+          {item.cents < 0 ? 'Devolución' : 'Cobro adicional'} · {money(Math.abs(item.cents) / 100)} · {item.reference} · {item.reason}
+          {' · '}{new Date(item.date).toLocaleString('es-MX')}
+        </p>)}
+        <form className={styles.adjustment} onSubmit={event => {
+          event.preventDefault();
+          const form = event.currentTarget;
+          const fields = new FormData(form);
+          const amount = String(fields.get('amount') || '').trim().replace(',','.');
+          if (!/^\d{1,7}(?:\.\d{1,2})?$/.test(amount) || Number(amount) <= 0) {
+            setStatus('Ingresa un monto válido con hasta dos decimales.'); return;
+          }
+          void run(async () => {
+            await apply(order,{action:'adjust',kind:fields.get('kind'),cents:Math.round(Number(amount)*100),
+              reference:fields.get('reference'),reason:fields.get('reason'),verified:fields.get('verified') === 'on'});
+            form.reset();
+            setStatus('Movimiento registrado.');
+          });
+        }}>
+          <label>Movimiento<select name="kind"><option value="refund">Devolución</option><option value="credit">Cobro adicional</option></select></label>
+          <label>Monto en MXN<Input name="amount" inputMode="decimal" required/></label>
+          <label>Referencia bancaria<Input name="reference" minLength={3} maxLength={100} required/></label>
+          <label>Motivo<Input name="reason" minLength={3} maxLength={400} required/></label>
+          <label><input name="verified" type="checkbox" required/> Confirmé el movimiento en mi cuenta bancaria.</label>
+          <p>Esto registra un movimiento que ya realizaste en el banco.</p>
+          <Button type="submit" disabled={busy}>Registrar movimiento</Button>
+        </form>
+      </details>}
       <details><summary>Historial</summary><ul>{order.history?.map((event, index) =>
         <li key={index}>{event.status} · {new Date(event.date).toLocaleString('es-MX')} · {event.actorId ?? (index === 0 ? 'Tienda web' : 'Prueba automatizada')}</li>)}</ul></details>
       </div>
