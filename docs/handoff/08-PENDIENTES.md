@@ -10,3 +10,5 @@ La modalidad local en Querétaro cobra solo las prendas; TARSI cotiza el deliver
 6. Presentar el resultado completo para aprobación y aplicar el procedimiento coordinado de publicación. La huella productiva todavía está vacía.
 
 Actualización: ya se verificaron Gmail, la tarifa local diferida, despacho y entrega por API, y las devoluciones y cobros adicionales. La vista de Pedidos fue aprobada. Falta validar el recorrido desde la URL protegida en un navegador con sesión de Netlify y autorizar explícitamente la publicación. Los pendientes históricos de arriba deben leerse con esta actualización.
+
+Ruta sin costo para producción preparada en el PR #6 y en el borrador de Floot. Antes de activarla, recibir autorización explícita y seguir «Ruta de producción sin costo» de [despliegue](07-DESPLIEGUE.md). La URL privada de Netlify aún requiere sesión de navegador para validar allí; la verificación automatizada del storefront local con el backend real Floot se ejecutó por separado.

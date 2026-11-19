@@ -1,6 +1,7 @@
 'use strict';
 
 (() => {
+  const live = ['tarsistudiomx.github.io','tarsi-skydropx.netlify.app'].includes(location.hostname);
   const api = location.hostname === 'tarsistudiomx.github.io' ? 'https://tarsi-skydropx.netlify.app' : '';
   const zip = $('zipCode');
   const colony = $('neighborhood');
@@ -137,7 +138,7 @@
     shippingLookup = controller;
     renderTotals();
     try {
-      const result = await request('shipping-quote', {destination: address, quantity: count()}, controller.signal);
+      const result = await request(live ? 'checkout-quote' : 'shipping-quote', {destination: address, quantity: count()}, controller.signal);
       if (shippingLookup !== controller) return;
       if (!Number.isFinite(result.customer_price) || result.customer_price <= 0 ||
         !(Date.parse(result.expires_at) > Date.now())) throw new Error('La cotización recibida es inválida.');

@@ -5,7 +5,7 @@ const {endpoint, readBody, HttpError} = require('../lib/http');
 const {postal} = require('../lib/postal');
 const {createSkydropx} = require('../lib/skydropx');
 
-const {useFlootPreview, flootPreview} = require('../lib/floot-preview');
+const {storefrontMode, flootCheckout} = require('../lib/floot-checkout');
 const {sealQuote, destinationKey} = require('../lib/quote-proof');
 
 function formatQuote(data, address, quantity, env, rateId) {
@@ -26,7 +26,7 @@ function createHandler({env = process.env, catalog = postal, sky = createSkydrop
     if (!Number.isInteger(quantity) || quantity < 1 || quantity > maxQuantity) {
       throw new HttpError(400, 'INVALID_QUANTITY', 'Elige de 1 a 30 playeras para cotizar.');
     }
-    if (useFlootPreview(event)) return flootPreview({destination, quantity}, 'quote', fetcher);
+    if (storefrontMode(event) === 'preview') return flootCheckout({destination, quantity}, 'quote', 'preview', fetcher);
     const address = await catalog.validate(destination);
     const hostname = event.rawUrl && new URL(event.rawUrl).hostname;
     if (/^deploy-preview-\d+--tarsi-skydropx\.netlify\.app$/.test(hostname || '') &&

@@ -31,3 +31,28 @@ test('Only PR #6 forwards quote, submission and recovery to Floot without Netlif
   assert.deepEqual(calls.map(call=>call.mode),['quote','checkout','recover']);
   assert.equal(unpack(await submit({env:{},fetcher})(event('POST',{body:{}}))).status, 400);
 });
+
+test('Published checkout routes to Floot while the carrier endpoint stays independent', async () => {
+  const checkoutQuote = require('../netlify/functions/checkout-quote').createHandler;
+  const calls = [];
+  const fetcher = async (url, request) => {
+    assert.equal(url, 'https://tarsi-control-ventas.floot.app/_api/tarsi_live_checkout');
+    assert.equal(request.headers['X-Tarsi-Storefront'], 'storefront-v1');
+    assert.equal(request.headers.Authorization, undefined);
+    calls.push(JSON.parse(request.body).mode);
+    return Response.json({ok:true});
+  };
+  const publicRequest = body => ({...event('POST',{body}), rawUrl:'https://tarsi-skydropx.netlify.app/.netlify/functions/test'});
+  assert.equal(unpack(await checkoutQuote(fetcher)(publicRequest({quantity:1,destination:{}}))).status, 200);
+  assert.equal(unpack(await submit({env:{},fetcher})(publicRequest({recover:true}))).status, 200);
+  assert.deepEqual(calls,['quote','recover']);
+  const {mockCatalog, destination} = require('./fixtures');
+  let queried = false;
+  const tariff = quote({env:{},catalog:mockCatalog(),sky:async()=> {
+    queried = true;
+    return {customerPrice:140,carrier:'FedEx',service:'Priority',days:2};
+  },fetcher});
+  assert.equal(unpack(await tariff(publicRequest({quantity:1,destination}))).data.customer_price, 140);
+  assert.equal(queried,true);
+  assert.deepEqual(calls,['quote','recover']);
+});
