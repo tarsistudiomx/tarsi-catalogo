@@ -1,7 +1,10 @@
 import {sql} from 'kysely';
 import {db} from '../helpers/db';
 import {getServerUserSession} from '../helpers/getServerUserSession';
+import {drainOrderMail} from '../helpers/orderFlowMail';
 import {schema, transitions} from './tarsi_web_admin_POST.schema';
+
+class NeedsInventory extends Error {}
 
 function json(value: unknown, status = 200) {
   return Response.json(value, {status, headers: {'Cache-Control': 'no-store'}});
@@ -15,8 +18,11 @@ export async function handle(request: Request) {
   if (!parsed.success) return json({error: 'Solicitud inválida'}, 400);
   const input = parsed.data;
   if (input.action === 'list') {
-    const orders = await sql<{details: string; adjustments: string | null; history: string | null}>`SELECT o.id, o.number, o.created_at, o.status, o.paid_at, o.tracking, w.queued_at, w.estimated_from::text, w.estimated_until::text,
+    const orders = await sql<{details: string; adjustments: string | null; transferReport:string|null; history: string | null}>`SELECT o.id, o.number, o.created_at, o.status, o.paid_at, o.tracking, w.queued_at, w.estimated_from::text, w.estimated_until::text,
       w.started_at, w.prepared_at, w.dispatched_at, w.delivered_at, w.dispatch_carrier, w.delivery_note,
+      f.hold_until, f.recover_until, f.last_issue, f.revoked_at,
+      CASE WHEN r.order_id IS NULL THEN NULL ELSE jsonb_build_object('bank',r.bank,'reference',r.reference,
+        'date',r.transferred_on,'cents',r.cents,'details',r.details,'reportedAt',r.reported_at)::text END AS transfer_report,
       p.reference AS payment_reference, p.amount_cents AS payment_cents, p.verified_by AS payment_actor, p.note AS payment_note,
       (o.payload - 'skydropx')::text AS details,
       (SELECT jsonb_agg(jsonb_build_object('cents', a.cents, 'reference', a.reference, 'reason', a.reason,
@@ -27,20 +33,28 @@ export async function handle(request: Request) {
       FROM tarsi_web_orders o
       LEFT JOIN tarsi_production_work w ON w.order_id = o.id
       LEFT JOIN tarsi_verified_payments p ON p.order_id = o.id
+      LEFT JOIN tarsi_order_flow f ON f.order_id=o.id
+      LEFT JOIN tarsi_transfer_reports r ON r.order_id=o.id
       WHERE o.is_test = ${input.test}
+        ${input.search ? sql`AND (strpos(lower(o.number),lower(${input.search}))>0 OR
+          strpos(lower(o.payload #>> '{customer,name}'),lower(${input.search}))>0)` : sql``}
+        ${input.from ? sql`AND (o.created_at AT TIME ZONE 'America/Mexico_City')::date>=${input.from}::date` : sql``}
+        ${input.to ? sql`AND (o.created_at AT TIME ZONE 'America/Mexico_City')::date<=${input.to}::date` : sql``}
+        ${input.amount ? sql`AND (o.payload->>'total')::int=${input.amount}` : sql``}
+        ${input.status ? sql`AND o.status=${input.status}` : sql``}
       ORDER BY o.created_at DESC LIMIT 100`.execute(db);
     const result = await sql<{revenue: number; paid: number}>`SELECT
       (coalesce(sum((o.payload->>'total')::integer * 100::bigint
         + coalesce((SELECT sum(a.cents) FROM tarsi_order_adjustments a WHERE a.order_id=o.id), 0)), 0) / 100.0)::float8 AS revenue,
       count(*)::integer AS paid FROM tarsi_web_orders o WHERE NOT o.is_test AND o.paid_at IS NOT NULL`.execute(db);
-    return json({orders: orders.rows.map(row => ({...row, details: JSON.parse(row.details), adjustments: row.adjustments ? JSON.parse(row.adjustments) : [], history: row.history ? JSON.parse(row.history) : []})), ...result.rows[0]});
+    return json({orders: orders.rows.map(row => ({...row, details: JSON.parse(row.details), transferReport: row.transferReport ? JSON.parse(row.transferReport) : null, adjustments: row.adjustments ? JSON.parse(row.adjustments) : [], history: row.history ? JSON.parse(row.history) : []})), ...result.rows[0]});
   }
   const actor = session.user.id;
   const orderId = input.id;
   const outcome = await db.transaction().execute(async trx => {
-    const result = await sql<{status: keyof typeof transitions; total: number; delivery: string; paid: boolean; prepared: boolean}>`
+    const result = await sql<{status: keyof typeof transitions; total: number; delivery: string; paid: boolean; isFlow:boolean; prepared: boolean}>`
       SELECT o.status, (o.payload->>'total')::integer AS total, o.payload->>'delivery' AS delivery,
-        o.paid_at IS NOT NULL AS paid, w.prepared_at IS NOT NULL AS prepared
+        o.paid_at IS NOT NULL AS paid, EXISTS (SELECT 1 FROM tarsi_order_flow f WHERE f.order_id=o.id) AS is_flow, w.prepared_at IS NOT NULL AS prepared
       FROM tarsi_web_orders o LEFT JOIN tarsi_production_work w ON w.order_id=o.id
       WHERE o.id=${orderId}::uuid AND o.is_test=${input.test} FOR UPDATE OF o`.execute(trx);
     const order = result.rows[0];
@@ -48,6 +62,17 @@ export async function handle(request: Request) {
     async function history(status: string) {
       await sql`INSERT INTO tarsi_web_order_history (order_id,status,actor_id)
         VALUES (${orderId}::uuid,${status},${actor})`.execute(trx);
+    }
+    if(input.action==='issue'){
+      if(order.isFlow) await sql`UPDATE tarsi_order_flow SET last_issue=${input.note} WHERE order_id=${orderId}::uuid`.execute(trx);
+      await history('Discrepancia: '+input.note);
+      return null;
+    }
+    if(input.action==='revoke-recovery'){
+      if(!order.isFlow) return {error:'Este pedido histórico no tiene un enlace revocable.',status:409};
+      await sql`UPDATE tarsi_order_flow SET revoked_at=coalesce(revoked_at,now()) WHERE order_id=${orderId}::uuid`.execute(trx);
+      await history('Enlace de recuperación revocado');
+      return null;
     }
     if (input.action === 'adjust') {
       if (!order.paid) return {error: 'Primero confirma el pago del pedido.', status: 409};
@@ -73,11 +98,22 @@ export async function handle(request: Request) {
       if (input.cents !== order.total * 100) return {error: 'El monto difiere del total. Resuelve la diferencia antes de confirmar.', status: 422};
       const key = input.reference.normalize('NFKC').toUpperCase().replace(/[^\p{L}\p{N}]/gu, '');
       if (key.length < 3) return {error: 'Ingresa la referencia bancaria completa.', status: 400};
+      await sql`SELECT pg_advisory_xact_lock(${input.test?912:911},hashtext(${key}))`.execute(trx);
+      if((await sql`SELECT 1 FROM tarsi_transfer_reports WHERE is_test=${input.test} AND reference_key=${key}
+        AND order_id<>${orderId}::uuid`.execute(trx)).rows.length)
+        return {error:'La referencia está reportada en otro pedido. Revisa el depósito.',status:409};
       const payment = await sql`INSERT INTO tarsi_verified_payments
         (order_id,is_test,reference,reference_key,amount_cents,verified_at,verified_by,note)
         VALUES (${orderId}::uuid,${input.test},${input.reference},${key},${input.cents},now(),${actor},${input.note || null})
         ON CONFLICT DO NOTHING RETURNING order_id`.execute(trx);
       if (!payment.rows.length) return {error: 'La referencia bancaria ya se utilizó. Verifica el depósito.', status: 409};
+      if(order.isFlow){
+        const stock=(await sql<{ok:boolean}>`SELECT tarsi_allocate_blanks(${orderId}::uuid,true,${actor}) AS ok`.execute(trx)).rows[0];
+        if(!stock?.ok) throw new NeedsInventory();
+        await sql`INSERT INTO tarsi_mail_outbox(order_id,kind,due_at) VALUES(${orderId}::uuid,'confirmed',now()) ON CONFLICT DO NOTHING`.execute(trx);
+        await sql`UPDATE tarsi_mail_outbox SET state='suppressed' WHERE order_id=${orderId}::uuid AND kind='reminder' AND state='pending'`.execute(trx);
+        await sql`UPDATE tarsi_order_flow SET last_issue=NULL WHERE order_id=${orderId}::uuid`.execute(trx);
+      }
       await sql`UPDATE tarsi_web_orders SET status='Pagado',paid_at=now() WHERE id=${orderId}::uuid`.execute(trx);
       await sql`INSERT INTO tarsi_production_work (order_id,queued_at,estimated_from,estimated_until)
         SELECT ${orderId}::uuid,now(),days[3],days[5] FROM (
@@ -113,8 +149,18 @@ export async function handle(request: Request) {
       dispatch_carrier=COALESCE(${input.carrier || null},dispatch_carrier),
       delivery_note=COALESCE(${input.note || null},delivery_note)
       WHERE order_id=${orderId}::uuid`.execute(trx);
+    if(input.status==='Cancelado' && order.isFlow){
+      await sql`UPDATE tarsi_order_flow SET hold_until=NULL WHERE order_id=${orderId}::uuid`.execute(trx);
+      await sql`UPDATE tarsi_mail_outbox SET state='suppressed' WHERE order_id=${orderId}::uuid AND kind IN ('reminder','registered') AND state='pending'`.execute(trx);
+    }
     await history(input.status);
     return null;
+  }).catch(async error=>{
+    if(!(error instanceof NeedsInventory)) throw error;
+    await sql`UPDATE tarsi_order_flow f SET last_issue='Pago en revisión: no hay existencias suficientes'
+      FROM tarsi_web_orders o WHERE f.order_id=o.id AND o.id=${orderId}::uuid AND o.paid_at IS NULL`.execute(db);
+    return {error:'No hay existencias suficientes. El pago queda para resolver y no pasa a producción.',status:409};
   });
+  if(!outcome && input.action==='confirm-payment') await drainOrderMail(input.test,orderId).catch(()=>{});
   return outcome ? json({error: outcome.error}, outcome.status) : json({ok:true});
 }

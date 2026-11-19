@@ -33,3 +33,4 @@ Para probar con Chromium instalado localmente, define `TARSI_CHROMIUM` con su ru
 - [Despliegue](docs/handoff/07-DESPLIEGUE.md)
 - [Pendientes](docs/handoff/08-PENDIENTES.md)
 - [Contexto para ChatGPT](docs/handoff/09-CONTEXTO-PARA-CHATGPT.md)
+- [Flujo de reservas y transferencias](docs/handoff/10-FLUJO-RESERVAS.md)
