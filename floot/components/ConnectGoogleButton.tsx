@@ -16,7 +16,18 @@ export function ConnectGoogleButton({ feature }: Props) {
     const listener = (event: MessageEvent) => {
       if (event.origin !== window.location.origin || event.source !== popup) return;
       const data = event.data;
-      if (data?.type === "GOOGLE_INTEGRATION_SUCCESS") {
+      if (data?.type === 'TARSI_GOOGLE_RETURN' && typeof data.code === 'string') {
+        window.removeEventListener('message', listener);
+        const url = '/_api/auth/google_integrations_callback?connection_code=' + encodeURIComponent(data.code);
+        fetch(url, {headers:{'x-tarsi-oauth-return':'1'},cache:'no-store'})
+          .then(async response => {
+            if (!response.ok) throw new Error('authorization_failed');
+            const result = await response.json();
+            setStatus(result.email === 'tarsi.studiomx@gmail.com' ? 'Gmail de TARSI conectado.' : 'Selecciona la cuenta tarsi.studiomx@gmail.com.');
+          })
+          .catch(() => setStatus('No se completó la conexión. Verifica tu sesión de administrador y vuelve a intentar.'))
+          .finally(() => popup.close());
+      } else if (data?.type === "GOOGLE_INTEGRATION_SUCCESS") {
         setStatus(data.email === "tarsi.studiomx@gmail.com" ? "Gmail de TARSI conectado." : "Selecciona la cuenta tarsi.studiomx@gmail.com.");
         window.removeEventListener("message", listener);
       } else if (data?.type === "GOOGLE_INTEGRATION_ERROR") {
