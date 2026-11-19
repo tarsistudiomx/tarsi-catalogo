@@ -1,0 +1,17 @@
+# Contexto para ChatGPT
+
+La modalidad local en Querétaro cobra solo las prendas; TARSI cotiza el delivery y contacta al cliente cuando esté listo. El remitente para producción es Gmail por OAuth de Floot. El administrador debe autorizar tarsi.studiomx@gmail.com desde Pedidos → Conectar Gmail. Resend conserva su función de pruebas y se confirmó recepción en Gmail.
+
+Continúa TARSI sin reconstruir la tienda. Repositorio `https://github.com/tarsistudiomx/tarsi-catalogo`, producción en `main`, rama de trabajo `feat/tarsi-checkout-dashboard`. Obtén el último commit con `git log -1 --oneline` y consulta [estado](01-ESTADO-ACTUAL.md). El proyecto Netlify es `tarsi-skydropx`. El proyecto Floot real es Tarsi — Control de Ventas, ID `66f62c32-15c0-4546-ba6e-bce0efe72d71`. Floot no tiene ramas en esta cuenta; revisar el editor y no publicar antes de autorización.
+
+Revisa `index.html`, `checkout.js`, `shop.js`, `shipping-ui.js`, `netlify/functions/submit-order.js`, `netlify/functions/shipping-quote.js`, `netlify/lib/quote-proof.js` y `floot/`. El navegador conserva el carrito hasta recibir un número real. Netlify recalcula y Floot registra el pedido con idempotencia de PostgreSQL. Los pedidos de pruebas están separados y se excluyen de cobros. Consulta [pruebas](06-PRUEBAS.md) y continúa desde el primer [pendiente](08-PENDIENTES.md). Conserva origen 76099, pesos, margen máximo entre $30 y 20%, redondeo y cuatro paqueterías permitidas. Mantén el diseño y la transferencia manual como único pago aprobado. No repitas migraciones y pruebas ya comprobadas si el código y contexto no cambiaron.
+
+Implementación inicial en commit `2915dae`, PR [#5](https://github.com/tarsistudiomx/tarsi-catalogo/pull/5), [Deploy Preview](https://deploy-preview-5--tarsi-skydropx.netlify.app/). En navegador con Netlify autorizado, abre la preview, agrega una playera M, llena solo datos sintéticos y cotiza 01000 / San Ángel. Usa siempre un nombre que empiece por PRUEBA, comprueba el número en la pestaña Pedidos de prueba de Floot y compara los importes. No mezcles ni publiques sin autorización explícita.
+
+Commit del flujo comprobado `9b01264`; el commit documental posterior se obtiene con `git rev-parse HEAD`. Ya hay evidencia del pedido de prueba `TARSI-E81C761A1364458E876E0F5F20F8FEE3` por $579, duplicación evitada y transiciones administrativas. No repetir el envío real solo para confirmar esos resultados. La próxima tarea exacta es abrir la URL protegida con sesión Netlify, comprobar las dos interfaces autenticadas y realizar la validación física indicada en el primer pendiente.
+
+## Rama vigente
+
+Trabaja en `feat/tarsi-ventas-integrales`, basada en los cambios del PR #5. Lee primero [pendientes](08-PENDIENTES.md) y [pruebas](06-PRUEBAS.md). El backend transaccional de Floot y el pago/prueba de producción ya se verificaron en sandbox. El correo real espera Resend. El próximo paso es conectar Resend y verificar una notificación de prueba, luego probar el recorrido en navegador autenticado. Los commits de esta etapa están en `git log bc7b2b0..HEAD`. No publiques ni reemplaces credenciales productivas sin aprobación.
+
+Vista previa vigente y verificada por los checks de GitHub: https://deploy-preview-6--tarsi-skydropx.netlify.app/ (requiere Netlify). El PR #6 reemplaza a #4 y #5 para publicación. Base de implementación `62657b8`. Checkpoint de editor Floot: `23ce5d79-8e18-4e87-8539-cad2ef1beb17`.

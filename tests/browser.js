@@ -79,9 +79,20 @@ test('Chromium móvil: catálogo, carrito mixto, dirección canónica, costo y p
     const errors = [];
     page.on('pageerror', error => errors.push(error.message));
     await page.goto(base);
-    assert.equal(await page.locator('.product').count(), 12);
+    assert.equal(await page.locator('.product').count(), 13);
+    const urban = page.locator('.product').filter({hasText: 'Spider-Man urbano'});
+    await urban.scrollIntoViewIfNeeded();
+    await urban.locator('img').evaluate(image => image.decode());
+    assert.match(await urban.locator('img').getAttribute('src'), /playera-13\.png$/);
     const logoLoaded = await page.locator('.logo').evaluate(image => image.complete && image.naturalWidth > 0);
     assert.equal(logoLoaded, true);
+    await page.locator('button[data-open="0"]').click();
+    await page.click('#detailZoom');
+    assert.equal(await page.getAttribute('#detailZoom', 'aria-pressed'), 'true');
+    assert.equal(await page.locator('#detailImg.is-zoomed').count(), 1);
+    await page.click('#next');
+    assert.equal(await page.getAttribute('#detailZoom', 'aria-pressed'), 'false');
+    await page.click('#detailClose');
     await selectProduct(page, 0, 'S', 2);
     await selectProduct(page, 4, 'XL', 2);
     await page.click('#navCart');
@@ -106,14 +117,10 @@ test('Chromium móvil: catálogo, carrito mixto, dirección canónica, costo y p
     await page.getByRole('button', {name: 'Restar una'}).first().click();
     await page.click('#quoteShipping');
     await waitText(page, '#totals .final', '$1,538 MXN');
-    await page.evaluate(() => { window.open = url => { window.orderMail = url; }; });
-    await page.click('#emailOrder');
-    const draft = await page.evaluate(() => new URL(window.orderMail).searchParams.get('body'));
-    assert.match(draft, /COLONIA: San Ángel/);
-    assert.match(draft, /ENVÍO: \$140 MXN/);
-    assert.match(draft, /PAQUETERÍA: FedEx · Priority/);
-    assert.match(draft, /COTIZACIÓN SKYDROPX: browser-q/);
-    assert.match(draft, /TOTAL: \$1,538 MXN/);
+    assert.equal(await page.locator('#orderActions :is(button, a)').count(), 3);
+    await page.click('#shareOrder');
+    await waitText(page, '#shareDialog', 'COMPARTE TU PEDIDO.');
+    assert.equal(await page.locator('#shareDialog a').getAttribute('href'), 'https://www.instagram.com/tarsi.mx/');
     assert.deepEqual(errors, []);
   } finally {
     await page.close();
@@ -148,6 +155,109 @@ test('Chromium escritorio: CP desconocido, varias colonias, error de tarifas y c
     await waitText(page, '#totals .final', 'Por confirmar');
     assert.equal(await page.inputValue('#neighborhood'), '');
     await waitText(page, '#totals .final', 'Por confirmar');
+  } finally {
+    await page.close();
+  }
+});
+
+test('Checkout móvil: datos incompletos, doble clic, red, reintento, confirmación y enlaces', async () => {
+  const page = await browser.newPage({viewport: {width: 390, height: 844}, isMobile: true, hasTouch: true});
+  const requests = [];
+  try {
+    await page.route('**/.netlify/functions/submit-order', async route => {
+      const body = route.request().postDataJSON();
+      requests.push(body);
+      if (!body.recover && !body.customer?.name) return route.fulfill({status: 400, json: {error: 'Revisa tu nombre.'}});
+      if (requests.length === 2) return route.abort('failed');
+      return route.fulfill({json: {number: 'TARSI-PRUEBA', status: 'Pendiente de pago',
+        items: [{name: 'The Amazing Spider-Man', size: 'M', qty: 1}], subtotal: 399, shipping: 140, total: 539,
+        notification: body.notify ? 'retry' : undefined, transfer: {bank: 'Banco de prueba', holder: 'Titular de prueba', clabe: '000000000000000000'}}});
+    });
+    await page.goto(base);
+    await selectProduct(page, 0, 'M', 1);
+    await page.click('#navCart');
+    await page.click('#submitOrder');
+    await waitText(page, '#orderStatus', 'Revisa tu nombre');
+    await page.fill('#buyer', 'Cliente de prueba');
+    await page.fill('#phone', '5555550000');
+    await page.selectOption('#delivery', 'Envío nacional');
+    await page.fill('#zipCode', '01000');
+    await page.waitForFunction(() => document.querySelector('#state').value === 'Ciudad de México');
+    await page.fill('#neighborhood', 'San Ángel');
+    await page.fill('#street', 'Calle de prueba 123');
+    await page.click('#quoteShipping');
+    await waitText(page, '#totals .final', '$539 MXN');
+    await page.locator('#submitOrder').evaluate(button => {button.click(); button.click();});
+    await waitText(page, '#orderStatus', 'Reintenta con los mismos datos');
+    assert.equal(requests.length, 2);
+    assert.equal(await page.locator('.cart-line').count(), 1);
+    await page.click('#submitOrder');
+    await waitText(page, '#orderConfirmation', '¡TU PEDIDO FUE RECIBIDO!');
+    assert.equal(requests.length, 3);
+    assert.equal(requests[1].key, requests[2].key);
+    assert.equal(await page.locator('.cart-line').count(), 0);
+    assert.match(await page.locator('#orderReceipt').innerText(), /TARSI-PRUEBA[\s\S]*Pendiente de pago[\s\S]*\$539 MXN/);
+    assert.equal(await page.locator('#proofInstagram').getAttribute('href'), 'https://www.instagram.com/tarsi.mx/');
+    await page.evaluate(() => {
+      Object.defineProperty(navigator, 'share', {value: undefined, configurable: true});
+      Object.defineProperty(navigator, 'clipboard', {value: {writeText: value => {window.copied = value;}}, configurable: true});
+    });
+    await page.click('#copyOrderNumber');
+    assert.equal(await page.evaluate(() => window.copied), 'TARSI-PRUEBA');
+    await page.click('#shareReceipt');
+    await page.click('#copySummary');
+    await waitText(page, '#shareStatus', 'Resumen copiado.');
+    const copied = await page.evaluate(() => window.copied);
+    assert.match(copied, /TARSI-PRUEBA/);
+    assert.doesNotMatch(copied, /SKYDROPX|5555550000/);
+    await page.locator('#shareDialog button').first().click();
+    await page.click('#emailReceipt');
+    await waitText(page, '#notificationStatus', 'Vuelve a intentar el correo');
+    assert.equal(requests[3].key, requests[2].key);
+    assert.equal(requests[3].notify, true);
+    await page.reload();
+    await page.click('#navCart');
+    await page.click('#recoverOrder');
+    await waitText(page, '#orderConfirmation', '¡TU PEDIDO FUE RECIBIDO!');
+    assert.equal(requests[4].key, requests[2].key);
+    assert.equal(requests[4].recover, true);
+    assert.equal(await page.locator('#cartOverlay .modal').evaluate(modal => modal.scrollWidth <= modal.clientWidth), true);
+  } finally {
+    await page.close();
+  }
+});
+
+test('Navegador y sandbox Floot: entrega local, aviso y ventana bancaria', {
+  skip: process.env.TARSI_TEST_LIVE_CHECKOUT !== '1'
+}, async () => {
+  const {createHandler: orderHandler} = require('../netlify/functions/submit-order');
+  const submit = orderHandler({env: {}});
+  const page = await browser.newPage({viewport: {width: 768, height: 1024}});
+  try {
+    await page.route('**/.netlify/functions/submit-order', async route => {
+      const source = event('POST', {body: route.request().postData()});
+      source.rawUrl = 'https://deploy-preview-6--tarsi-skydropx.netlify.app/.netlify/functions/submit-order';
+      const response = await submit(source);
+      await route.fulfill({status: response.statusCode, headers: response.headers, body: response.body});
+    });
+    await page.goto(base);
+    await selectProduct(page, 0, 'M', 1);
+    await page.click('#navCart');
+    await page.fill('#buyer', 'PRUEBA BROWSER TARSI');
+    await page.fill('#phone', '5555550000');
+    await page.selectOption('#delivery', 'Entrega en Querétaro');
+    await page.fill('#zipCode', '76099');
+    await page.waitForFunction(() => !document.querySelector('#neighborhood').disabled);
+    await page.fill('#neighborhood', 'Plazas del Sol 2a Sección');
+    await page.fill('#street', 'Calle de prueba 123');
+    await page.click('#emailOrder');
+    await waitText(page, '#orderConfirmation', '¡TU PEDIDO FUE RECIBIDO!');
+    await waitText(page, '#orderReceipt', 'Por cotizar el día de la entrega');
+    await waitText(page, '#transferDetails', '$399 MXN');
+    await waitText(page, '#notificationStatus', 'aceptó la notificación');
+    const number = (await page.locator('#orderReceipt').innerText()).match(/TARSI-[A-F0-9]{32}/)?.[0];
+    assert.ok(number);
+    console.log('Pedido real de prueba registrado:', number);
   } finally {
     await page.close();
   }

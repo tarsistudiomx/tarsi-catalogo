@@ -2,14 +2,15 @@
   'use strict';
 
   const products = [
-    ['Spider-Man clásico', 'CÓMICS'], ['Goku y Shenlong', 'ANIME'],
-    ['Gojo Satoru', 'ANIME'], ['Rayo McQueen', 'CINE / AUTOS'],
-    ['Sally', 'CINE / AUTOS'], ['Vegeta', 'ANIME'],
-    ['Goku Black', 'ANIME'], ['Amazing Fantasy', 'CÓMICS'],
-    ['Spider-Verse', 'CÓMICS'], ['Miles Morales', 'CÓMICS'],
-    ['Spider-Man emblema', 'CÓMICS'], ['Spider-Man urbano', 'CÓMICS']
-  ].map(([name, category], id) => ({
-    name, category, image: 'assets/playera-' + String(id + 1).padStart(2, '0') + '.jpg'
+    ['The Amazing Spider-Man', 'CÓMICS', 'playera-01.png'], ['Goku y Shenlong', 'ANIME', 'playera-02.png'],
+    ['Gojo Satoru', 'ANIME', 'playera-03.png'], ['Rayo McQueen', 'CINE / AUTOS', 'playera-04.png'],
+    ['Sally', 'CINE / AUTOS', 'playera-05.png'], ['Majin Vegeta', 'ANIME', 'playera-06.png'],
+    ['Goku Ultra Instinto', 'ANIME', 'playera-07.png'], ['Amazing Fantasy', 'CÓMICS', 'playera-08.png'],
+    ['Miles Morales', 'CÓMICS', 'playera-09.png'], ['Spider-Man clásico', 'CÓMICS', 'playera-10.png'],
+    ['Spider-Man emblema', 'CÓMICS', 'playera-11.png'], ['Checo Pérez · Never Give Up', 'CINE / AUTOS', 'playera-12.png'],
+    ['Spider-Man urbano', 'CÓMICS', 'playera-13.png']
+  ].map(([name, category, photo], id) => ({
+    name, category, image: 'assets/' + (photo ?? 'playera-' + String(id + 1).padStart(2, '0') + '.jpg')
   }));
   const sizes = ['XS', 'S', 'M', 'L', 'XL', 'XXL'];
   const maxQuantity = 30;

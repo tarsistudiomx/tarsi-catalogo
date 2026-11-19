@@ -1,6 +1,7 @@
 'use strict';
 
 (() => {
+  const live = ['tarsistudiomx.github.io','tarsi-skydropx.netlify.app'].includes(location.hostname);
   const api = location.hostname === 'tarsistudiomx.github.io' ? 'https://tarsi-skydropx.netlify.app' : '';
   const zip = $('zipCode');
   const colony = $('neighborhood');
@@ -14,6 +15,7 @@
   let shippingLookup;
   let quote;
   let expiry;
+  const local = () => $('delivery').value === 'Entrega en Querétaro';
 
   async function request(route, data, signal) {
     const response = await fetch(api + '/.netlify/functions/' + route, {
@@ -34,12 +36,13 @@
     const pieces = count();
     const items = pricing(pieces);
     const shipping = currentQuote();
+    const fee = shipping?.customer_price ?? (local() ? 0 : null);
     $('totals').innerHTML = `
       <div class="totalrow"><span>${pieces} piezas · precio individual</span><b>${money(pieces * unitPrice)}</b></div>
       <div class="totalrow"><span>Descuento por promociones</span><b>− ${money(pieces * unitPrice - items)}</b></div>
       <div class="totalrow"><span>Subtotal de prendas</span><b>${money(items)}</b></div>
-      <div class="totalrow"><span>Envío</span><b>${shipping ? money(shipping.customer_price) : national() ? 'Por cotizar' : 'Por confirmar'}</b></div>
-      <div class="totalrow final"><span>TOTAL</span><span>${shipping ? money(items + shipping.customer_price) : pieces ? 'Por confirmar' : money(0)}</span></div>`;
+      <div class="totalrow"><span>Envío</span><b>${local() ? 'Por cotizar el día de la entrega' : fee !== null ? money(fee) : national() ? 'Por cotizar' : 'Por confirmar'}</b></div>
+      <div class="totalrow final"><span>${local() ? 'TOTAL A TRANSFERIR' : 'TOTAL'}</span><span>${fee !== null ? money(items + fee) : pieces ? 'Por confirmar' : money(0)}</span></div>`;
     $('quoteShipping').disabled = !national() || !pieces || pieces > maxQuantity || Boolean(shippingLookup);
   }
 
@@ -135,7 +138,7 @@
     shippingLookup = controller;
     renderTotals();
     try {
-      const result = await request('shipping-quote', {destination: address, quantity: count()}, controller.signal);
+      const result = await request(live ? 'checkout-quote' : 'shipping-quote', {destination: address, quantity: count()}, controller.signal);
       if (shippingLookup !== controller) return;
       if (!Number.isFinite(result.customer_price) || result.customer_price <= 0 ||
         !(Date.parse(result.expires_at) > Date.now())) throw new Error('La cotización recibida es inválida.');
@@ -178,6 +181,4 @@
   }
 
   window.TarsiShipping = {currentQuote, readyForShipping};
-  invalidate();
-  if (zip.value) loadPostal();
 })();
