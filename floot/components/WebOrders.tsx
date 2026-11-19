@@ -1,4 +1,5 @@
 import React, {useEffect, useRef, useState} from 'react';
+import styles from './WebOrders.module.css';
 import {ConnectGoogleButton} from './ConnectGoogleButton';
 import {Button} from './Button';
 import {Input} from './Input';
@@ -12,6 +13,8 @@ type Order = {
   details: Omit<z.infer<typeof payload>, 'skydropx'>;
   history: {status: OrderStatus; date: string; actorId: number | null}[];
 };
+const awaitingPayment = (order: Order) => order.status === 'Pendiente de pago' || order.status === 'Pago por verificar';
+const orderLabel = (order: Order) => order.status === 'En preparación' && order.preparedAt ? 'Preparado' : order.status;
 const money = (value: number) => value.toLocaleString('es-MX', {style: 'currency', currency: 'MXN'});
 
 async function request(data: Record<string, unknown>) {
@@ -24,6 +27,8 @@ async function request(data: Record<string, unknown>) {
 }
 
 export function WebOrders({onRevenue, tab, openOrder}: {tab: string; openOrder: (id:string)=>void; onRevenue: (revenue: number, paid: number) => void}) {
+  const [view, setView] = useState<'pending' | 'paid'>('pending');
+  const [expanded, setExpanded] = useState<string | null>(null);
   const [test, setTest] = useState(false);
   const [orders, setOrders] = useState<Order[]>([]);
   const [status, setStatus] = useState('');
@@ -37,6 +42,9 @@ export function WebOrders({onRevenue, tab, openOrder}: {tab: string; openOrder: 
   const cents = /^\d{1,7}(?:[.,]\d{1,2})?$/.test(payment.amount.trim()) ? Math.round(Number(payment.amount.replace(',','.')) * 100) : 0;
   const queue = orders.filter(o => o.queuedAt && ['Pagado','En preparación'].includes(o.status))
     .sort((a,b) => (a.queuedAt || '').localeCompare(b.queuedAt || '') || a.id.localeCompare(b.id));
+  const pending = orders.filter(awaitingPayment);
+  const paid = orders.filter(order => !awaitingPayment(order) && order.status !== 'Cancelado');
+  const cancelled = orders.filter(order => order.status === 'Cancelado');
   const today = new Intl.DateTimeFormat('en-CA',{timeZone:'America/Mexico_City',year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date());
 
   async function apply(order: Order, data: Record<string, unknown>) {
@@ -67,7 +75,7 @@ export function WebOrders({onRevenue, tab, openOrder}: {tab: string; openOrder: 
   }
 
   function work(order: Order, index: number) {
-    return <article key={order.id}><p><a href={'#order-'+order.id} onClick={event=>{event.preventDefault(); openOrder(order.id);}}>Preparar pedido {order.number}</a> · Cola {index+1} · {order.details.customer.name}</p>
+    return <article key={order.id}><p><a href={'#order-'+order.id} onClick={event=>{event.preventDefault(); setView('paid'); setExpanded(order.id); openOrder(order.id);}}>Preparar pedido {order.number}</a> · Cola {index+1} · {order.details.customer.name}</p>
       <ul>{order.details.items.map(item => <li key={item.id+':'+item.size}>{item.name} · {item.size} × {item.qty}</li>)}</ul>
       <p>Pago {order.paidAt && new Date(order.paidAt).toLocaleString('es-MX')} · Estimado {order.estimatedFrom} a {order.estimatedUntil}
       {order.estimatedUntil < today && !order.preparedAt ? ' · Retrasado' : order.estimatedUntil === today && !order.preparedAt ? ' · Vence hoy' : ''}
@@ -78,28 +86,27 @@ export function WebOrders({onRevenue, tab, openOrder}: {tab: string; openOrder: 
     </article>;
   }
 
-  return <section hidden={!['pedidos','hoy'].includes(tab)}>
-    {tab === 'hoy' && <section><h3>MIS ACTIVIDADES · PRODUCCIÓN</h3><p>Actividades creadas al verificar el pago.</p>{queue.map(work)}<p role="status">{status}</p></section>}
-    <section hidden={tab !== 'pedidos'}>
-    <h3>PEDIDOS POR HACER</h3>{queue.map(work)}
-    <h3>PEDIDOS REGISTRADOS</h3>
-    <p>Correo de TARSI: conecta tarsi.studiomx@gmail.com para enviar avisos de pedidos.</p>
-    <ConnectGoogleButton feature="gmail"/>
-    <Button disabled={busy} onClick={() => void run(async () => {
-      await load(!test);
-      setTest(!test);
-    })}>{test ? 'Ver pedidos reales' : 'Ver pedidos de prueba'}</Button>
-    <Button disabled={busy} onClick={() => void run(() => load(test))}>Actualizar</Button>
-    <p role="status">{status || (busy ? 'Cargando…' : test ? 'Modo prueba · excluido de ventas' : '')}</p>
-    {!orders.length && !busy && <p>Aún no hay pedidos en esta vista.</p>}
-    {orders.map(order => <article key={order.id} id={'order-'+order.id}>
-      <h4>{test ? '[PRUEBA] ' : ''}{order.number} · {order.status}</h4>
+  function orderRow(order: Order) {
+    const isOpen = expanded === order.id;
+    const detailsId = 'details-'+order.id;
+    return <article className={styles.row} key={order.id} id={'order-'+order.id}>
+      <button type="button" className={styles.rowButton} aria-expanded={isOpen} aria-controls={detailsId}
+        onClick={() => setExpanded(isOpen ? null : order.id)}>
+        <span className={styles.customer}><strong>{order.details.customer.name}</strong>
+          <time dateTime={order.createdAt}>{new Date(order.createdAt).toLocaleDateString('es-MX',{day:'numeric',month:'short',year:'numeric'})}</time></span>
+        <span className={styles.amount}>{money(order.details.total)}</span>
+        <span className={styles.badge} data-status={orderLabel(order)}>{orderLabel(order)}</span>
+        <span className={styles.chevron} aria-hidden="true">{isOpen ? '−' : '+'}</span>
+      </button>
+      <div id={detailsId} className={styles.details} hidden={!isOpen}>
+      <h4>{test ? '[PRUEBA] ' : ''}{order.number}</h4>
       <p>{new Date(order.createdAt).toLocaleString("es-MX")} · {order.details.origin}</p>
       <p>{order.details.customer.name} · {order.details.customer.phone} {order.details.customer.email}</p>
       <p>{Object.entries(order.details.address).filter(([key]) => key !== 'country_code').map(([,value]) => value).join(', ')}</p>
       <p>{order.details.delivery} {[order.details.carrier, order.details.service].filter(Boolean).join(' · ')}</p>
       <ul>{order.details.items.map(item => <li key={item.id + ':' + item.size}>{item.name} · {item.size} × {item.qty}</li>)}</ul>
       <p>Subtotal {money(order.details.subtotal)} · Envío {order.details.delivery === 'Entrega en Querétaro' ? 'por cotizar el día de la entrega' : money(order.details.shipping)} · Total {money(order.details.total)}</p>
+      <div className={styles.actions}>
       {order.tracking && <p>Guía {order.tracking}</p>}
       {order.paymentReference && <p>Referencia verificada: {order.paymentReference}{order.paymentNote && ' · '+order.paymentNote}</p>}
       {['Pendiente de pago','Pago por verificar'].includes(order.status) && <Button disabled={busy} onClick={() => {
@@ -120,10 +127,45 @@ export function WebOrders({onRevenue, tab, openOrder}: {tab: string; openOrder: 
           tracking:tracking[order.id],...dispatch[order.id]}))}>{next === 'Enviado' && order.details.delivery === 'Entrega en Querétaro' ? 'Registrar salida local' : next}</Button>)}
       {order.status === 'En preparación' && !order.preparedAt && <Button disabled={busy} onClick={() =>
         void run(() => apply(order,{action:'prepare'}))}>Marcar preparado</Button>}
+      </div>
       <details><summary>Historial</summary><ul>{order.history?.map((event, index) =>
         <li key={index}>{event.status} · {new Date(event.date).toLocaleString('es-MX')} · {event.actorId ?? (index === 0 ? 'Tienda web' : 'Prueba automatizada')}</li>)}</ul></details>
-    </article>)}
-    <dialog ref={dialog} aria-labelledby="verifyTitle">
+      </div>
+    </article>;
+  }
+
+  const visible = view === 'pending' ? pending : paid;
+  return <section className={styles.root} hidden={!['pedidos','hoy'].includes(tab)}>
+    {tab === 'hoy' && <section className={styles.work}><h3>Mis actividades · Producción</h3>
+      {queue.map(work)}<p role="status">{status}</p></section>}
+    <section hidden={tab !== 'pedidos'}>
+      <div className={styles.heading}>
+        <h3>Pedidos registrados</h3>
+        <div className={styles.tools}>
+          <Button variant="outline" disabled={busy} onClick={() => void run(async () => {
+            await load(!test);
+            setTest(!test);
+            setView('pending');
+            setExpanded(null);
+          })}>{test ? 'Ver pedidos reales' : 'Ver pedidos de prueba'}</Button>
+          <Button variant="outline" disabled={busy} onClick={() => void run(() => load(test))}>Actualizar</Button>
+        </div>
+      </div>
+      <div className={styles.filters} role="group" aria-label="Estado de pago">
+        <button type="button" aria-pressed={view === 'pending'} onClick={() => setView('pending')}>Pendientes de pago <span>{pending.length}</span></button>
+        <button type="button" aria-pressed={view === 'paid'} onClick={() => setView('paid')}>Pagados <span>{paid.length}</span></button>
+      </div>
+      {(status || busy || test) && <p className={styles.status} role="status">{status || (busy ? 'Cargando…' : 'Pedidos de prueba · excluidos de ventas')}</p>}
+      {visible.length > 0 ? <div className={styles.list}>
+        <div className={styles.columns} aria-hidden="true"><span>Cliente</span><span>Total</span><span>Estado</span><span /></div>
+        {visible.map(orderRow)}
+      </div> : !busy && <p className={styles.empty}>{view === 'pending' ? 'Aún no hay pedidos pendientes de pago.' : 'Aún no hay pedidos pagados.'}</p>}
+      {cancelled.length > 0 && <details className={styles.settings}><summary>Cancelados ({cancelled.length})</summary>{cancelled.map(orderRow)}</details>}
+      <details className={styles.settings}><summary>Configuración del correo</summary>
+        <p>Conecta tarsi.studiomx@gmail.com para enviar avisos de pedidos.</p>
+        <ConnectGoogleButton feature="gmail"/>
+      </details>
+    <dialog className={styles.dialog} ref={dialog} aria-labelledby="verifyTitle">
       <h3 id="verifyTitle">CONFIRMAR PAGO</h3>
       {paymentOrder && <><p>Pedido {paymentOrder.number} · Importe esperado {money(paymentOrder.details.total)} · Banco Nu</p>
         <label>Clave de rastreo o referencia bancaria<Input value={payment.reference} maxLength={100}
@@ -140,7 +182,7 @@ export function WebOrders({onRevenue, tab, openOrder}: {tab: string; openOrder: 
         <Button disabled={busy || !payment.verified || payment.reference.trim().length < 3 || cents !== paymentOrder.details.total * 100}
           onClick={()=>void run(async()=> {
             await apply(paymentOrder,{action:'confirm-payment',reference:payment.reference,cents,verified:payment.verified,note:payment.note});
-            dialog.current?.close(); setStatus('Pago confirmado y actividad creada.');
+            dialog.current?.close(); setView('paid'); setExpanded(paymentOrder.id); setStatus('Pago confirmado y actividad creada.');
           })}>CONFIRMAR PAGO</Button></>}
     </dialog></section></section>;
 }

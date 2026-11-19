@@ -9,3 +9,5 @@ La migración aditiva `floot/migration.sql` crea `tarsi_web_orders` y `tarsi_web
 ## Ventas integrales
 
 `floot/sales-migration.sql` añade `tarsi_verified_payments`, `tarsi_production_work` y `tarsi_order_notifications` a la base existente. `confirm-payment` exige sesión admin, importe exacto en centavos, referencia y verificación. Una transacción con bloqueo de fila registra pago, estado, historial y trabajo. La referencia normalizada es única por entorno de prueba/real. Pedidos por hacer y Mis actividades proyectan el mismo trabajo enlazado al pedido.
+
+La sección Pedidos registrados usa filas expandibles por cliente y filtros Pendientes de pago y Pagados. Los cancelados y la conexión Gmail están en paneles plegables. Las actividades de producción siguen en Checklist y abren directamente el pedido correspondiente.
