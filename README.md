@@ -21,3 +21,14 @@ Para probar con Chromium instalado localmente, define `TARSI_CHROMIUM` con su ru
 2. Descarga el ZIP nacional TXT del [Catálogo Nacional de Códigos Postales de Correos de México](https://www.correosdemexico.gob.mx/SSLServicios/ConsultaCP/CodigoPostal_Exportar.aspx) y extrae `CPdescarga.txt` fuera de Git. El importador guarda el catálogo en Netlify Blobs privado y la tienda devuelve los datos del C.P. solicitado.
 3. Con `NETLIFY_SITE_ID` y `NETLIFY_AUTH_TOKEN` en una sesión autorizada, ejecuta `npm run postal:import -- /ruta/privada/CPdescarga.txt`. El script valida 32 entidades, versiona por SHA-256 y activa la versión después de completar la importación.
 4. Las funciones públicas de cotización y consulta postal deben aceptar las solicitudes del origen `https://tarsistudiomx.github.io`. Verifica que las cotizaciones reales se obtengan antes de anunciar el cambio. Compara ejemplos de una y cuatro prendas con el [total de Skydropx PRO](https://api-pro.skydropx.com/es-MX/api-docs/legacy). El costo al cliente suma el mayor entre $30 y 20% de la tarifa y redondea hacia arriba a un múltiplo de $10.
+
+## Continuidad del proyecto TARSI
+
+- [Estado actual](docs/handoff/01-ESTADO-ACTUAL.md)
+- [Arquitectura](docs/handoff/02-ARQUITECTURA.md)
+- [Cambios](docs/handoff/03-CAMBIOS.md)
+- [Integración con el Dashboard](docs/handoff/04-INTEGRACION-DASHBOARD.md)
+- [Pruebas](docs/handoff/05-PRUEBAS.md)
+- [Despliegue](docs/handoff/06-DESPLIEGUE.md)
+- [Pendientes](docs/handoff/07-PENDIENTES.md)
+- [Contexto para ChatGPT](docs/handoff/08-CONTEXTO-PARA-CHATGPT.md)

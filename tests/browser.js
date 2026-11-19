@@ -117,24 +117,20 @@ test('Chromium móvil: catálogo, carrito mixto, dirección canónica, costo y p
     await page.getByRole('button', {name: 'Restar una'}).first().click();
     await page.click('#quoteShipping');
     await waitText(page, '#totals .final', '$1,538 MXN');
+    assert.equal(await page.locator('#orderActions button').count(), 3);
     await page.evaluate(() => {
       window.open = url => { window.webOrderMail = url; };
-      HTMLAnchorElement.prototype.click = function () { window.orderMail = this.href; };
     });
     await page.click('#emailOrder');
-    const mail = new URL(await page.evaluate(() => window.orderMail));
-    assert.equal(mail.protocol, 'mailto:');
-    assert.equal(mail.pathname, 'tarsi.studiomx@gmail.com');
-    assert.match(mail.searchParams.get('subject'), /Cliente de prueba/);
-    const draft = mail.searchParams.get('body');
-    await page.click('#webEmailOrder');
     const gmail = new URL(await page.evaluate(() => window.webOrderMail));
     assert.equal(gmail.origin, 'https://mail.google.com');
-    assert.equal(gmail.searchParams.get('body'), draft);
-    assert.match(draft, /COLONIA: San Ángel/);
+    assert.equal(gmail.searchParams.get('to'), 'arista.studiot@gmail.com');
+    assert.equal(gmail.searchParams.get('su'), 'Nuevo pedido TARSI');
+    const draft = gmail.searchParams.get('body');
+    assert.match(draft, /Calle de prueba 123, San Ángel/);
     assert.match(draft, /ENVÍO: \$140 MXN/);
     assert.match(draft, /PAQUETERÍA: FedEx · Priority/);
-    assert.match(draft, /COTIZACIÓN SKYDROPX: browser-q/);
+    assert.doesNotMatch(draft, /SKYDROPX|browser-q/);
     assert.match(draft, /TOTAL: \$1,538 MXN/);
     assert.deepEqual(errors, []);
   } finally {

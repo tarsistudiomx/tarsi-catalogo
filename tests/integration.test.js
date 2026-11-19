@@ -42,7 +42,7 @@ test('POST /shipping-quote espera disponibilidad, valida origen/destino y elige 
   assert.equal(result.data.customer_price, 140);
   assert.equal(result.data.carrier_name, 'FedEx');
   assert.equal(result.data.carrier_service, 'Priority');
-  assert.equal(result.data.quotation_id, 'q-1');
+  assert.equal(result.data.quotation_id, undefined);
   assert.equal(unpack(await handler(event('POST', {body: {quantity: 31, destination}}))).status, 400);
   assert.equal(unpack(await handler(event('POST', {body: {quantity: 4,
     destination: {...destination, area_level3: 'Inventada'}}}))).status, 422);

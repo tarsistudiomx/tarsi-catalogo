@@ -13,6 +13,7 @@
 .detail-photo img{transition:scale .2s ease}
 .detail-photo img.is-zoomed{scale:1.16}
 @media(prefers-reduced-motion:reduce){.detail-photo img{transition:none}}
+#orderActions h3,#orderConfirmation h3{color:var(--green);margin:20px 0 8px}#proofInstagram{text-decoration:none;text-align:center;align-content:center}#proofInstagram[hidden]{display:none}#submitOrder:disabled{opacity:.65}#bankDetails dd{margin:0 0 8px;overflow-wrap:anywhere}
 </style><style id="shipping-ui">
 .shipping-panel{margin:20px 0 8px;padding:20px;border:1px solid #355B4855;border-radius:18px;background:#fff9}
 .shipping-title{font-size:16px;font-weight:900;letter-spacing:.05em;color:#355B48}
@@ -20,6 +21,7 @@
 .shipping-panel button{border:0;border-radius:30px;padding:14px 22px;background:#355B48;color:#F4EBDD;font-size:12px;font-weight:900}
 .shipping-panel button:disabled{opacity:.55;cursor:wait}
 #shippingStatus{font-size:13px;margin-top:13px;line-height:1.5}
+#orderActions h3,#orderConfirmation h3{color:var(--green);margin:20px 0 8px}#proofInstagram{text-decoration:none;text-align:center;align-content:center}#proofInstagram[hidden]{display:none}#submitOrder:disabled{opacity:.65}#bankDetails dd{margin:0 0 8px;overflow-wrap:anywhere}
 </style></head><body>
 <header><a href="#inicio" aria-label="Inicio TARSI"><img class="logo" src="assets/logo-original.png" alt="TARSI"></a><nav><a href="#catalogo">VER PLAYERAS</a><button class="pill" id="navCart">CARRITO (0)</button></nav></header>
 <main><section class="hero" id="inicio"><div class="hero-content"><div class="eyebrow">TARSI® / COLECCIÓN 2026</div><h1>USA LO<br>QUE <span>AMAS.</span></h1><p>Tu mundo, tu diseño, tu estilo.</p><a class="cta" href="#catalogo">EXPLORAR COLECCIÓN</a></div><div class="hero-stamp">WEAR WHAT YOU LOVE. / TARSI®</div></section>
@@ -30,12 +32,34 @@
 <footer class="footer"><div class="eyebrow">TARSI® / MADE TO BE WORN</div><h2>WEAR WHAT<br>YOU LOVE.</h2><p>¿Tienes alguna duda? <a href="https://www.instagram.com/tarsi.mx/" target="_blank" rel="noopener">Escríbenos en Instagram</a>.</p></footer>
 <div class="bottom"><div><small id="barCount">0 PIEZAS EN TU CARRITO</small><div><strong id="barTotal">$0 MXN</strong></div></div><button class="pill" id="barCart">VER MI CARRITO</button></div><button class="guide-fab" id="guideOpen">GUÍA DE COMPRA</button>
 <div class="overlay" id="detailOverlay" role="dialog" aria-modal="true" aria-label="Detalle de playera"><div class="modal"><button class="close" id="detailClose" aria-label="Cerrar detalle">CERRAR</button><div class="detail"><div class="detail-photo"><img id="detailImg" alt=""><button type="button" id="detailZoom" class="detail-zoom" aria-label="Ampliar foto" aria-pressed="false">ZOOM</button><button class="move prev" id="prev" aria-label="Playera anterior">ANT.</button><button class="move next" id="next" aria-label="Siguiente playera">SIG.</button></div><div class="detail-data"><div class="tag" id="detailCategory"></div><h2 id="detailName"></h2><div class="cost">$399 MXN</div><div class="fieldrow"><label>Talla<select id="detailSize"><option>XS</option><option selected>S</option><option>M</option><option>L</option><option>XL</option><option>XXL</option></select></label><label>Piezas<select id="detailQty"></select></label></div><button class="add" id="detailAdd">AGREGAR AL CARRITO</button><p class="transparent-note">Combina diseños y tallas. El descuento se aplica automáticamente al carrito.</p></div></div></div></div>
-<div class="overlay" id="cartOverlay" role="dialog" aria-modal="true" aria-label="Carrito de compras"><div class="modal cart-modal"><button class="close" id="cartClose">CERRAR</button><div class="eyebrow" style="color:var(--green)">02 / TU SELECCIÓN</div><h2>TU CARRITO.</h2><div id="cartItems"></div><div class="totals" id="totals"></div><div class="checkout"><label>Tu nombre<input id="buyer" placeholder="Nombre" autocomplete="name"></label><label>Código postal<input id="zipCode" placeholder="5 dígitos" inputmode="numeric" maxlength="5" autocomplete="postal-code"></label><label class="wide">Calle y número<input id="street" placeholder="Calle, número exterior e interior" autocomplete="street-address"></label><label class="wide">Colonia<input id="neighborhood" list="postalColonies" placeholder="Ingresa primero tu código postal" autocomplete="off" disabled><datalist id="postalColonies"></datalist></label><label>Ciudad / municipio<input id="city" autocomplete="address-level2" readonly></label><label>Estado<input id="state" autocomplete="address-level1" readonly></label><div id="postalStatus" class="transparent-note wide" role="status"></div><label>Teléfono de contacto<input id="phone" placeholder="10 dígitos" inputmode="tel" autocomplete="tel"></label><label class="wide">¿Cómo prefieres recibirlo?<select id="delivery"><option value="Por confirmar">Por confirmar</option><option value="Entrega en Querétaro">Entrega en Querétaro</option><option value="Envío nacional">Envío nacional</option></select></label></div><div class="shipping-panel" id="shippingPanel">
+<div class="overlay" id="cartOverlay" role="dialog" aria-modal="true" aria-label="Carrito de compras"><div class="modal cart-modal"><button class="close" id="cartClose">CERRAR</button><div class="eyebrow" style="color:var(--green)">02 / TU SELECCIÓN</div><h2>TU CARRITO.</h2><div id="cartItems"></div><div class="totals" id="totals"></div><div class="checkout"><label>Tu nombre<input id="buyer" placeholder="Nombre" autocomplete="name"></label><label>Código postal<input id="zipCode" placeholder="5 dígitos" inputmode="numeric" maxlength="5" autocomplete="postal-code"></label><label class="wide">Calle y número<input id="street" placeholder="Calle, número exterior e interior" autocomplete="street-address"></label><label class="wide">Colonia<input id="neighborhood" list="postalColonies" placeholder="Ingresa primero tu código postal" autocomplete="off" disabled><datalist id="postalColonies"></datalist></label><label>Ciudad / municipio<input id="city" autocomplete="address-level2" readonly></label><label>Estado<input id="state" autocomplete="address-level1" readonly></label><div id="postalStatus" class="transparent-note wide" role="status"></div><label>Teléfono de contacto<input id="phone" placeholder="10 dígitos" inputmode="tel" autocomplete="tel"></label><label>Correo electrónico (opcional)<input id="buyerEmail" type="email" autocomplete="email" maxlength="254"></label><label class="wide">¿Cómo prefieres recibirlo?<select id="delivery"><option value="Por confirmar">Por confirmar</option><option value="Entrega en Querétaro">Entrega en Querétaro</option><option value="Envío nacional">Envío nacional</option></select></label></div><div class="shipping-panel" id="shippingPanel">
   <div class="shipping-title">COTIZA TU ENVÍO.</div>
   <p>Completa tu dirección y código postal para consultar el costo final de entrega.</p>
   <button type="button" id="quoteShipping">COTIZAR ENVÍO</button>
   <div id="shippingStatus" role="status" aria-live="polite">Aún no se ha cotizado el envío.</div>
-</div><p class="transparent-note" id="shippingQuote">El envío se añadirá al total cuando haya una cotización vigente.</p><div class="actions"><button class="primary" id="emailOrder">ENVIAR POR CORREO</button><button id="webEmailOrder">ABRIR GMAIL WEB</button><button id="copyOrder">COPIAR PEDIDO</button><button id="shareOrder">COMPARTIR PEDIDO</button><button id="instagramOrder">PEDIR POR INSTAGRAM</button></div><p class="transparent-note">Abre el pedido en tu app de correo o en Gmail web y revisa el borrador antes de enviarlo. También puedes solicitar el pedido por correo y acordar el pago con TARSI.</p></div></div>
+</div><p class="transparent-note" id="shippingQuote">El envío se añadirá al total cuando haya una cotización vigente.</p><section id="orderActions" aria-labelledby="orderTitle">
+<h3 id="orderTitle">¡TU PEDIDO ESTÁ CASI LISTO!</h3>
+<p>Revisa tus datos y envíanos tu pedido para continuar con el pago.</p>
+<button class="add" id="submitOrder">ENVIAR PEDIDO</button>
+<p class="transparent-note">Tu pedido se registrará en TARSI. No se realizará ningún cobro todavía.</p>
+<div class="actions"><button id="shareOrder">COMPARTIR PEDIDO</button><button id="emailOrder">ENVIAR POR CORREO</button></div>
+<p id="orderStatus" role="status" aria-live="polite"></p>
+</section>
+<section id="orderConfirmation" hidden aria-labelledby="orderReceived">
+<h3 id="orderReceived" tabindex="-1">¡RECIBIMOS TU PEDIDO!</h3>
+<p>Tu pedido ya está registrado. Solo falta completar el pago.</p>
+<div class="totals" id="orderReceipt"></div>
+<div id="transferDetails" hidden>
+<h4>01 / REALIZA TU TRANSFERENCIA</h4>
+<p>Realiza tu transferencia utilizando los datos bancarios oficiales de TARSI. Incluye tu número de pedido como referencia.</p>
+<dl id="bankDetails"></dl>
+<h4>02 / ENVÍA TU COMPROBANTE</h4>
+<p>Una vez realizada tu transferencia, envíanos una captura de tu comprobante por Instagram junto con tu número de pedido.</p>
+</div>
+<p id="transferPending" hidden>Contacta a TARSI para obtener los datos oficiales de transferencia antes de pagar.</p>
+<div class="actions"><a class="pill" id="proofInstagram" href="https://www.instagram.com/tarsi.mx/" target="_blank" rel="noopener noreferrer">ENVIAR COMPROBANTE POR INSTAGRAM</a><button id="copyOrderNumber">COPIAR NÚMERO DE PEDIDO</button></div>
+<div class="actions"><button id="shareReceipt">COMPARTIR PEDIDO</button><button id="emailReceipt">ENVIAR POR CORREO</button></div>
+</section></div></div>
 <div class="overlay" id="guideOverlay" role="dialog" aria-modal="true" aria-label="Guía de compra"><div class="modal guide-modal"><button class="close" id="guideClose">CERRAR</button><div class="eyebrow" style="color:var(--red)">¿PRIMERA VEZ EN TARSI?</div><h2>ASÍ DE FÁCIL.</h2><div class="help-steps"><div><b>01 / EXPLORA</b><br>Abre el diseño que te guste para verlo en grande.</div><div><b>02 / PERSONALIZA</b><br>Selecciona talla y piezas. Agrégalas al carrito.</div><div><b>03 / CONFIRMA</b><br>Revisa el total y envíanos tu pedido.</div></div><h3>RESPUESTAS RÁPIDAS.</h3><div id="faqList"></div><button class="add" id="guideShop">VER PLAYERAS</button></div></div><div class="toast" id="toast" role="status"></div>
 <script src="shop.js"></script><script>
 const {products, maxQuantity, unitPrice, subtotal: pricing, count: quantityOf, isLine} = TarsiShop;
@@ -82,32 +106,6 @@ $('cartItems').addEventListener('click', event => {
   save();
   renderCart();
 });
-function orderText() {
-  const n = count();
-  const quote = window.TarsiShipping.currentQuote();
-  const carrier = [quote?.carrier_name, quote?.carrier_service].filter(Boolean).join(' · ');
-  return [
-    'PEDIDO TARSI®', 'WEAR WHAT YOU LOVE.', '',
-    ...cart.map(x => `${products[x.id].name} | Talla ${x.size} | ${x.qty} pieza(s)`),
-    '', `PIEZAS: ${n}`, `SUBTOTAL DE PRENDAS: ${money(pricing(n))}`,
-    `ENVÍO: ${quote ? money(quote.customer_price) : 'Por confirmar'}`,
-    ...(carrier ? [`PAQUETERÍA: ${carrier}`] : []),
-    ...(quote?.quotation_id ? [`COTIZACIÓN SKYDROPX: ${quote.quotation_id}`] : []),
-    `TOTAL: ${quote ? money(pricing(n) + quote.customer_price) : 'Por confirmar'}`,
-    '', `NOMBRE: ${$('buyer').value.trim() || 'Por confirmar'}`,
-    `MUNICIPIO / ESTADO: ${[$('city').value, $('state').value].filter(Boolean).join(', ') || 'Por confirmar'}`,
-    `DIRECCIÓN: ${$('street').value.trim() || 'Por confirmar'}`,
-    `COLONIA: ${$('neighborhood').value.trim() || 'Por confirmar'}`, `C.P.: ${$('zipCode').value || 'Por confirmar'}`,
-    `TELÉFONO: ${$('phone').value.trim() || 'Por confirmar'}`, `ENTREGA: ${$('delivery').value}`,
-    '', 'Preparación: 3 a 5 días hábiles después de confirmar el pago.'
-  ].join('\n');
-}
-function requireCart() {
-  if (!count()) { toast('AGREGA AL MENOS UNA PLAYERA'); return false; }
-  if ($('delivery').value === 'Envío nacional') return window.TarsiShipping.readyForShipping();
-  return true;
-}
-function copyFallback(text){const a=document.createElement('textarea');a.value=text;a.style.position='fixed';a.style.opacity='0';document.body.appendChild(a);a.select();const ok=document.execCommand('copy');a.remove();return ok}
 $('detailQty').innerHTML=Array.from({length:10},(_,i)=>`<option value="${i+1}">${i+1}</option>`).join('');
 $('detailAdd').onclick=()=>{if(addItem(active,$('detailSize').value,+$('detailQty').value))close('detailOverlay')};$('detailClose').onclick=()=>close('detailOverlay');$('prev').onclick=()=>showProduct(active-1,false);$('next').onclick=()=>showProduct(active+1,false);
 for(const id of ['barCart','navCart'])$(id).onclick=()=>{renderCart();open('cartOverlay')};$('cartClose').onclick=()=>close('cartOverlay');
@@ -117,33 +115,10 @@ function setDetailZoom(enabled) {
 }
 $('detailZoom').onclick = () => setDetailZoom(!$('detailImg').classList.contains('is-zoomed'));
 
-function orderEmail() {
-  const to = 'tarsi.studiomx@gmail.com';
-  const subject = 'Nuevo pedido TARSI® — ' + ($('buyer').value.trim() || 'Cliente');
-  return {to, subject, body: orderText().replace(/\r?\n/g, '\r\n')};
-}
-
-$('emailOrder').onclick = () => {
-  if (!requireCart()) return;
-  const {to, subject, body} = orderEmail();
-  const link = document.createElement('a');
-  link.href = 'mailto:' + to + '?subject=' + encodeURIComponent(subject) + '&body=' + encodeURIComponent(body);
-  link.click();
-};
-
-$('webEmailOrder').onclick = () => {
-  if (!requireCart()) return;
-  const {to, subject, body} = orderEmail();
-  const params = new URLSearchParams({view: 'cm', fs: '1', to, su: subject, body});
-  window.open('https://mail.google.com/mail/?' + params, '_blank', 'noopener');
-};
-$('copyOrder').onclick=async()=>{if(!requireCart())return;try{if(navigator.clipboard&&window.isSecureContext)await navigator.clipboard.writeText(orderText());else if(!copyFallback(orderText()))throw Error();toast('PEDIDO COPIADO')}catch(e){toast('NO SE PUDO COPIAR. USA COMPARTIR')}};
-$('shareOrder').onclick=async()=>{if(!requireCart())return;try{if(navigator.share)await navigator.share({title:'Pedido TARSI',text:orderText()});else{await navigator.clipboard.writeText(orderText());toast('PEDIDO COPIADO PARA COMPARTIR')}}catch(e){if(e.name!=='AbortError')toast('NO SE PUDO COMPARTIR')}};
-$('instagramOrder').onclick=async()=>{if(!requireCart())return;try{if(navigator.clipboard&&window.isSecureContext)await navigator.clipboard.writeText(orderText());else copyFallback(orderText());toast('PEDIDO COPIADO. PÉGALO EN INSTAGRAM')}catch(e){}window.open('https://www.instagram.com/direct/t/tarsi.mx/','_blank','noopener')};
 $('guideOpen').onclick=()=>open('guideOverlay');$('guideClose').onclick=()=>close('guideOverlay');$('guideShop').onclick=()=>{close('guideOverlay');$('catalogo').scrollIntoView({behavior:'smooth'})};
 for(const id of ['detailOverlay','cartOverlay','guideOverlay'])$(id).addEventListener('click',e=>{if(e.target===$(id))close(id)});document.addEventListener('keydown',e=>{if(e.key==='Escape')for(const id of ['detailOverlay','cartOverlay','guideOverlay'])if($(id).classList.contains('show'))close(id);if($('detailOverlay').classList.contains('show')){if(e.key==='ArrowRight')showProduct(active+1,false);if(e.key==='ArrowLeft')showProduct(active-1,false)}});
-const faqs=[['¿Cómo compro?','Elige un diseño, ábrelo, selecciona talla y cantidad y presiona AGREGAR AL CARRITO. Repite con otras playeras si quieres. Abre el carrito para revisar y enviarnos el pedido.'],['¿Cuánto cuestan?','1 playera cuesta $399, 2 cuestan $699 y 3 cuestan $999 MXN. Las promociones se combinan automáticamente: por ejemplo, 4 piezas cuestan $1,398 y 6 piezas $1,998.'],['¿Puedo combinar diseños y tallas?','Sí. Puedes llevar distintos diseños y tallas en un mismo pedido. Cada combinación se registra por separado en el carrito.'],['¿Cómo sé mi talla?','Nuestras playeras tienen corte oversized. Si tienes dudas sobre las medidas, consulta la guía de tallas de las historias destacadas de @tarsi.mx antes de pagar.'],['¿Cómo se paga?','TARSI comparte los datos de transferencia al revisar tu solicitud.'],['¿Cuándo llega mi pedido?','La preparación tarda aproximadamente 3 a 5 días hábiles después de confirmar el pago. El tiempo de transporte es adicional y depende del destino.'],['¿Hacen envíos?','Sí. Realizamos entregas en Querétaro y envíos a toda la República Mexicana. El costo del envío se cotiza según la ubicación.'],['¿El total ya incluye envío?','El carrito muestra el subtotal de las playeras con promociones. Cuando cotizas el envío, verás su costo y el total a pagar.'],['¿Puedo modificar mi pedido?','Sí. En el carrito puedes aumentar, reducir o eliminar piezas antes de enviarlo. Si ya nos enviaste el pedido, escríbenos para revisar si aún es posible modificarlo.'],['¿El pedido se confirma al enviarlo?','No. Enviar el desglose sirve para solicitar tu compra. El pedido se confirma cuando revisamos los detalles y recibimos el pago.'],['¿Qué hace la opción de correo?','Abre un borrador dirigido a tarsi.studiomx@gmail.com en tu app de correo predeterminada. También puedes abrir el borrador en Gmail web. Revisa el pedido y pulsa Enviar.'],['¿Puedo pedir por Instagram?','Sí. Copiamos el pedido y abrimos Instagram Direct. Si Instagram no abre la conversación, busca @tarsi.mx y pega el pedido.']];
+const faqs=[['¿Cómo compro?','Elige un diseño, ábrelo, selecciona talla y cantidad y presiona AGREGAR AL CARRITO. Repite con otras playeras si quieres. Abre el carrito para revisar y enviarnos el pedido.'],['¿Cuánto cuestan?','1 playera cuesta $399, 2 cuestan $699 y 3 cuestan $999 MXN. Las promociones se combinan automáticamente: por ejemplo, 4 piezas cuestan $1,398 y 6 piezas $1,998.'],['¿Puedo combinar diseños y tallas?','Sí. Puedes llevar distintos diseños y tallas en un mismo pedido. Cada combinación se registra por separado en el carrito.'],['¿Cómo sé mi talla?','Nuestras playeras tienen corte oversized. Si tienes dudas sobre las medidas, consulta la guía de tallas de las historias destacadas de @tarsi.mx antes de pagar.'],['¿Cómo se paga?','Cuando recibimos tu pedido, consulta los datos de transferencia o contacta a TARSI desde la confirmación.'],['¿Cuándo llega mi pedido?','La preparación tarda aproximadamente 3 a 5 días hábiles después de confirmar el pago. El tiempo de transporte es adicional y depende del destino.'],['¿Hacen envíos?','Sí. Realizamos entregas en Querétaro y envíos a toda la República Mexicana. El costo del envío se cotiza según la ubicación.'],['¿El total ya incluye envío?','El carrito muestra el subtotal de las playeras con promociones. Cuando cotizas el envío, verás su costo y el total a pagar.'],['¿Puedo modificar mi pedido?','Sí. En el carrito puedes aumentar, reducir o eliminar piezas antes de enviarlo. Si ya nos enviaste el pedido, escríbenos para revisar si aún es posible modificarlo.'],['¿El pedido se confirma al enviarlo?','El pedido se registra al presionar ENVIAR PEDIDO. El pago queda pendiente hasta que TARSI verifica la transferencia.'],['¿Qué hace la opción de correo?','Abre un borrador en Gmail web dirigido a arista.studiot@gmail.com. Revisa el pedido y pulsa Enviar.'],['¿Puedo pedir por Instagram?','Sí. Escríbenos al perfil oficial @tarsi.mx para consultar tu pedido.']];
 $('faqList').innerHTML=faqs.map(([q,a],i)=>`<div class="faq ${i===0?'open':''}"><button aria-expanded="${i===0?'true':'false'}">${q}</button><p>${a}</p></div>`).join('');document.querySelectorAll('.faq button').forEach(b=>b.onclick=()=>{const x=b.parentElement;const opened=x.classList.toggle('open');b.setAttribute('aria-expanded',String(opened))});
 $('filters').addEventListener('click',e=>{const b=e.target.closest('[data-filter]');if(!b)return;filter=b.dataset.filter;document.querySelectorAll('.filter').forEach(x=>x.classList.toggle('active',x===b));draw()});
 let observer;if('IntersectionObserver'in window){observer=new IntersectionObserver(entries=>entries.forEach(e=>{if(e.isIntersecting){e.target.classList.add('visible');observer.unobserve(e.target)}}),{threshold:.08})}function observe(){document.querySelectorAll('.reveal:not(.visible)').forEach(x=>observer?observer.observe(x):x.classList.add('visible'))}draw();updateBar();observe();
-</script><script src="shipping-ui.js"></script></body></html>
+</script><script src="shipping-ui.js"></script><script src="checkout.js"></script></body></html>
