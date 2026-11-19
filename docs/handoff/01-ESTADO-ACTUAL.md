@@ -9,3 +9,5 @@ El Dashboard de Floot recibió un pedido de prueba por su endpoint de editor. La
 ## Ventas integrales
 
 La rama vigente es `feat/tarsi-ventas-integrales`, basada en el PR #5. Storefront y Dashboard público continúan en versiones anteriores. Los tres nuevos componentes de persistencia se agregaron de forma aditiva en la base existente y el código se cargó solo en el editor Floot. La prueba integral de API registra y confirma pedidos de prueba; el envío real de correo está bloqueado por la conexión Resend.
+
+Vista previa vigente: https://deploy-preview-6--tarsi-skydropx.netlify.app/ · PR borrador https://github.com/tarsistudiomx/tarsi-catalogo/pull/6 · implementación `62657b8`. Netlify informó SUCCESS; solicitudes anónimas a la vista previa reciben HTTP 401. Checkpoint Floot `23ce5d79-8e18-4e87-8539-cad2ef1beb17`. El PR #6 incluye el trabajo de #4 y #5; no fusionarlos por separado.

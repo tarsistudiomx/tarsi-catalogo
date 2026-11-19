@@ -11,3 +11,5 @@ Commit del flujo comprobado `9b01264`; el commit documental posterior se obtiene
 ## Rama vigente
 
 Trabaja en `feat/tarsi-ventas-integrales`, basada en los cambios del PR #5. Lee primero [pendientes](08-PENDIENTES.md) y [pruebas](06-PRUEBAS.md). El backend transaccional de Floot y el pago/prueba de producción ya se verificaron en sandbox. El correo real espera Resend. El próximo paso es conectar Resend y verificar una notificación de prueba, luego probar el recorrido en navegador autenticado. Los commits de esta etapa están en `git log bc7b2b0..HEAD`. No publiques ni reemplaces credenciales productivas sin aprobación.
+
+Vista previa vigente y verificada por los checks de GitHub: https://deploy-preview-6--tarsi-skydropx.netlify.app/ (requiere Netlify). El PR #6 reemplaza a #4 y #5 para publicación. Base de implementación `62657b8`. Checkpoint de editor Floot: `23ce5d79-8e18-4e87-8539-cad2ef1beb17`.
