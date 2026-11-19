@@ -1,8 +1,8 @@
 # Catálogo TARSI
 
-GitHub Pages aloja el catálogo público. La tienda consulta las funciones de Netlify para completar la dirección y cotizar el envío. Los pedidos siguen las opciones manuales del carrito. El cliente ve el subtotal promocional, el envío y el total después de cotizar.
+Netlify sirve la tienda TARSI y las funciones de dirección, cotización y registro. GitHub Pages también puede consultar las funciones públicas de Netlify. El servidor valida y registra pedidos en el Dashboard de Floot antes de mostrar una confirmación. La versión en la rama de desarrollo requiere la configuración descrita en el handoff.
 
-El cotizador solicita únicamente FedEx, Estafeta, Paquetexpress y DHL a Skydropx PRO. El carrito muestra la paquetería y el servicio de la tarifa elegida. El pedido incluye también el folio de cotización.
+El cotizador solicita únicamente FedEx, Estafeta, Paquetexpress y DHL a Skydropx PRO. El carrito muestra la paquetería y el servicio de la tarifa elegida. La referencia de cotización se conserva internamente y el cliente recibe el número público de TARSI.
 
 ## Pruebas
 

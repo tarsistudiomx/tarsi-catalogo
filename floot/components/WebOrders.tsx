@@ -61,6 +61,7 @@ export function WebOrders({onRevenue}: {onRevenue: (revenue: number, paid: numbe
     {!orders.length && !busy && <p>Aún no hay pedidos en esta vista.</p>}
     {orders.map(order => <article key={order.id}>
       <h4>{test ? '[PRUEBA] ' : ''}{order.number} · {order.status}</h4>
+      <p>{new Date(order.createdAt).toLocaleString("es-MX")} · {order.details.origin}</p>
       <p>{order.details.customer.name} · {order.details.customer.phone} {order.details.customer.email}</p>
       <p>{Object.entries(order.details.address).filter(([key]) => key !== 'country_code').map(([,value]) => value).join(', ')}</p>
       <p>{order.details.delivery} {[order.details.carrier, order.details.service].filter(Boolean).join(' · ')}</p>
@@ -75,7 +76,7 @@ export function WebOrders({onRevenue}: {onRevenue: (revenue: number, paid: numbe
           await load(test);
         })}>{next}</Button>)}
       <details><summary>Historial</summary><ul>{order.history?.map((event, index) =>
-        <li key={index}>{event.status} · {new Date(event.date).toLocaleString('es-MX')} · {event.actorId ?? 'Tienda web'}</li>)}</ul></details>
+        <li key={index}>{event.status} · {new Date(event.date).toLocaleString('es-MX')} · {event.actorId ?? (index === 0 ? 'Tienda web' : 'Prueba automatizada')}</li>)}</ul></details>
     </article>)}
   </section>;
 }
