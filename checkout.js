@@ -4,6 +4,7 @@
   const status = $('orderStatus');
   const button = $('submitOrder');
   const api = location.hostname === 'tarsistudiomx.github.io' ? 'https://tarsi-skydropx.netlify.app' : '';
+  const preview = /^deploy-preview-\d+--tarsi-skydropx\.netlify\.app$/.test(location.hostname);
   const draftKey = 'tarsi-checkout-attempt';
   const fields = [...document.querySelectorAll('.cart-modal .checkout input, .cart-modal .checkout select')];
   let attempt;
@@ -72,13 +73,16 @@
     } catch { toast('NO SE PUDO COMPARTIR EL PEDIDO'); }
   }
 
-  function email(order, quote, saved) {
-    if (!order.items.length) return toast('AGREGA AL MENOS UNA PLAYERA');
+  function prepareEmail(event, order, quote, saved) {
+    if (!order.items.length) {
+      event.preventDefault();
+      return toast('AGREGA AL MENOS UNA PLAYERA');
+    }
     const params = new URLSearchParams({
       view: 'cm', fs: '1', to: 'arista.studiot@gmail.com', su: 'Nuevo pedido TARSI',
       body: summary(order, quote, true, saved)
     });
-    window.open('https://mail.google.com/mail/?' + params, '_blank', 'noopener,noreferrer');
+    event.currentTarget.href = 'https://mail.google.com/mail/?' + params;
   }
 
   function withLocation(order) {
@@ -97,6 +101,7 @@
     }
     line('Pedido', data.number);
     line('Estado', data.status);
+    if (preview) line('Modo de prueba.', 'En el Dashboard, abre Pedidos y luego Ver pedidos de prueba.');
     for (const item of data.items) line(item.name, 'Talla ' + item.size + ' · ' + item.qty + ' pieza(s)');
     line('Subtotal', money(data.subtotal));
     line('Envío', money(data.shipping));
@@ -132,9 +137,9 @@
 
   document.addEventListener('tarsi-render-totals', showCheckout);
   $('shareOrder').onclick = () => share(draft(), window.TarsiShipping.currentQuote());
-  $('emailOrder').onclick = () => email(withLocation(draft()), window.TarsiShipping.currentQuote());
+  $('emailOrder').onclick = event => prepareEmail(event, withLocation(draft()), window.TarsiShipping.currentQuote());
   $('shareReceipt').onclick = () => share(confirmedDraft.order, confirmedDraft.quote, receipt);
-  $('emailReceipt').onclick = () => email(confirmedDraft.order, confirmedDraft.quote, receipt);
+  $('emailReceipt').onclick = event => prepareEmail(event, confirmedDraft.order, confirmedDraft.quote, receipt);
   $('copyOrderNumber').onclick = async () => {
     try { await copy(receipt.number); toast('NÚMERO DE PEDIDO COPIADO'); }
     catch { toast('NO SE PUDO COPIAR EL NÚMERO'); }
@@ -169,6 +174,9 @@
         body: JSON.stringify({...order, key: attempt.key, proof: quote?.proof}),
         signal: AbortSignal.timeout(21000)
       });
+      if (preview && [401, 403].includes(response.status)) {
+        throw new Error('La vista previa requiere una sesión de Netlify. Inicia sesión y vuelve a intentar.');
+      }
       const result = await response.json();
       if (!response.ok) throw new Error(result.error || 'Intenta nuevamente.');
       if (!result.number || !Array.isArray(result.items)) throw new Error();

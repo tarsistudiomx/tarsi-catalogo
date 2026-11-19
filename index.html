@@ -13,7 +13,7 @@
 .detail-photo img{transition:scale .2s ease}
 .detail-photo img.is-zoomed{scale:1.16}
 @media(prefers-reduced-motion:reduce){.detail-photo img{transition:none}}
-#orderActions h3,#orderConfirmation h3{color:var(--green);margin:20px 0 8px}#proofInstagram{text-decoration:none;text-align:center;align-content:center}#proofInstagram[hidden]{display:none}#submitOrder:disabled{opacity:.65}#orderReceipt{overflow-wrap:anywhere}#bankDetails dd{margin:0 0 8px;overflow-wrap:anywhere}
+.actions .email-action{display:grid;place-items:center;text-align:center;text-decoration:none;border:1px solid var(--ink);border-radius:12px;padding:15px 10px;font-size:12px;font-weight:900}#orderActions h3,#orderConfirmation h3{color:var(--green);margin:20px 0 8px}#proofInstagram{text-decoration:none;text-align:center;align-content:center}#proofInstagram[hidden]{display:none}#submitOrder:disabled{opacity:.65}#orderReceipt{overflow-wrap:anywhere}#bankDetails dd{margin:0 0 8px;overflow-wrap:anywhere}
 </style><style id="shipping-ui">
 .shipping-panel{margin:20px 0 8px;padding:20px;border:1px solid #355B4855;border-radius:18px;background:#fff9}
 .shipping-title{font-size:16px;font-weight:900;letter-spacing:.05em;color:#355B48}
@@ -21,7 +21,7 @@
 .shipping-panel button{border:0;border-radius:30px;padding:14px 22px;background:#355B48;color:#F4EBDD;font-size:12px;font-weight:900}
 .shipping-panel button:disabled{opacity:.55;cursor:wait}
 #shippingStatus{font-size:13px;margin-top:13px;line-height:1.5}
-#orderActions h3,#orderConfirmation h3{color:var(--green);margin:20px 0 8px}#proofInstagram{text-decoration:none;text-align:center;align-content:center}#proofInstagram[hidden]{display:none}#submitOrder:disabled{opacity:.65}#orderReceipt{overflow-wrap:anywhere}#bankDetails dd{margin:0 0 8px;overflow-wrap:anywhere}
+.actions .email-action{display:grid;place-items:center;text-align:center;text-decoration:none;border:1px solid var(--ink);border-radius:12px;padding:15px 10px;font-size:12px;font-weight:900}#orderActions h3,#orderConfirmation h3{color:var(--green);margin:20px 0 8px}#proofInstagram{text-decoration:none;text-align:center;align-content:center}#proofInstagram[hidden]{display:none}#submitOrder:disabled{opacity:.65}#orderReceipt{overflow-wrap:anywhere}#bankDetails dd{margin:0 0 8px;overflow-wrap:anywhere}
 </style></head><body>
 <header><a href="#inicio" aria-label="Inicio TARSI"><img class="logo" src="assets/logo-original.png" alt="TARSI"></a><nav><a href="#catalogo">VER PLAYERAS</a><button class="pill" id="navCart">CARRITO (0)</button></nav></header>
 <main><section class="hero" id="inicio"><div class="hero-content"><div class="eyebrow">TARSI® / COLECCIÓN 2026</div><h1>USA LO<br>QUE <span>AMAS.</span></h1><p>Tu mundo, tu diseño, tu estilo.</p><a class="cta" href="#catalogo">EXPLORAR COLECCIÓN</a></div><div class="hero-stamp">WEAR WHAT YOU LOVE. / TARSI®</div></section>
@@ -42,7 +42,7 @@
 <p>Revisa tus datos y envíanos tu pedido para continuar con el pago.</p>
 <button class="add" id="submitOrder">ENVIAR PEDIDO</button>
 <p class="transparent-note">Tu pedido se registrará en TARSI. No se realizará ningún cobro todavía.</p>
-<div class="actions"><button id="shareOrder">COMPARTIR PEDIDO</button><button id="emailOrder">ENVIAR POR CORREO</button></div>
+<div class="actions"><button id="shareOrder" aria-describedby="shareHelpOrder">COMPARTIR RESUMEN</button><a id="emailOrder" class="email-action" href="https://mail.google.com/mail/">ABRIR BORRADOR EN GMAIL</a></div><p class="transparent-note" id="shareHelpOrder">Comparte o copia los productos, tallas y total. Para registrar la compra, usa Enviar pedido.</p>
 <p id="orderStatus" role="status" aria-live="polite"></p>
 </section>
 <section id="orderConfirmation" hidden aria-labelledby="orderReceived">
@@ -58,7 +58,7 @@
 </div>
 <p id="transferPending" hidden>Contacta a TARSI para obtener los datos oficiales de transferencia antes de pagar.</p>
 <div class="actions"><a class="pill" id="proofInstagram" href="https://www.instagram.com/tarsi.mx/" target="_blank" rel="noopener noreferrer">ENVIAR COMPROBANTE POR INSTAGRAM</a><button id="copyOrderNumber">COPIAR NÚMERO DE PEDIDO</button></div>
-<div class="actions"><button id="shareReceipt">COMPARTIR PEDIDO</button><button id="emailReceipt">ENVIAR POR CORREO</button></div>
+<div class="actions"><button id="shareReceipt" aria-describedby="shareHelpReceipt">COMPARTIR RESUMEN</button><a id="emailReceipt" class="email-action" href="https://mail.google.com/mail/">ABRIR BORRADOR EN GMAIL</a></div><p class="transparent-note" id="shareHelpReceipt">Comparte o copia el número de pedido, los productos y el total.</p>
 </section></div></div>
 <div class="overlay" id="guideOverlay" role="dialog" aria-modal="true" aria-label="Guía de compra"><div class="modal guide-modal"><button class="close" id="guideClose">CERRAR</button><div class="eyebrow" style="color:var(--red)">¿PRIMERA VEZ EN TARSI?</div><h2>ASÍ DE FÁCIL.</h2><div class="help-steps"><div><b>01 / EXPLORA</b><br>Abre el diseño que te guste para verlo en grande.</div><div><b>02 / PERSONALIZA</b><br>Selecciona talla y piezas. Agrégalas al carrito.</div><div><b>03 / CONFIRMA</b><br>Revisa el total y envíanos tu pedido.</div></div><h3>RESPUESTAS RÁPIDAS.</h3><div id="faqList"></div><button class="add" id="guideShop">VER PLAYERAS</button></div></div><div class="toast" id="toast" role="status"></div>
 <script src="shop.js"></script><script>

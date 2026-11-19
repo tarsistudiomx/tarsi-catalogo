@@ -117,12 +117,12 @@ test('Chromium móvil: catálogo, carrito mixto, dirección canónica, costo y p
     await page.getByRole('button', {name: 'Restar una'}).first().click();
     await page.click('#quoteShipping');
     await waitText(page, '#totals .final', '$1,538 MXN');
-    assert.equal(await page.locator('#orderActions button').count(), 3);
-    await page.evaluate(() => {
-      window.open = url => { window.webOrderMail = url; };
-    });
+    assert.equal(await page.locator('#orderActions :is(button, a)').count(), 3);
+    await waitText(page, '#shareHelpOrder', 'Comparte o copia');
+    await page.route('https://mail.google.com/**', route => route.fulfill({body: 'Gmail de prueba'}));
+    const gmailRequest = page.waitForRequest('https://mail.google.com/**');
     await page.click('#emailOrder');
-    const gmail = new URL(await page.evaluate(() => window.webOrderMail));
+    const gmail = new URL((await gmailRequest).url());
     assert.equal(gmail.origin, 'https://mail.google.com');
     assert.equal(gmail.searchParams.get('to'), 'arista.studiot@gmail.com');
     assert.equal(gmail.searchParams.get('su'), 'Nuevo pedido TARSI');
