@@ -5,7 +5,8 @@ const assert = require('node:assert/strict');
 const {readFile} = require('node:fs/promises');
 const {resolve, extname} = require('node:path');
 const {createServer} = require('node:http');
-const {chromium} = require('playwright');
+const {chromium, webkit} = require('playwright');
+const engine = process.env.TARSI_BROWSER === 'webkit' ? webkit : chromium;
 const {createHandler: postalHandler} = require('../netlify/functions/postal-code');
 const {createHandler: shippingHandler} = require('../netlify/functions/shipping-quote');
 const {HttpError} = require('../netlify/lib/http');
@@ -54,10 +55,10 @@ test.before(async () => {
     server.listen(0, '127.0.0.1', resolve);
   });
   base = 'http://127.0.0.1:' + server.address().port;
-  browser = await chromium.launch({
+  browser = await engine.launch(engine === chromium ? {
     executablePath: process.env.TARSI_CHROMIUM || undefined,
     args: ['--no-sandbox', '--disable-dev-shm-usage']
-  });
+  } : {});
 });
 test.after(async () => {
   await browser?.close();
@@ -73,7 +74,7 @@ async function selectProduct(page, id, size, quantity) {
   await page.click('#detailAdd');
 }
 
-test('Chromium móvil: catálogo, carrito mixto, dirección canónica, costo y pedido por correo', async () => {
+test(engine.name()+' móvil: catálogo, carrito mixto, dirección canónica, costo y pedido por correo', async () => {
   const page = await browser.newPage({viewport: {width: 390, height: 844}, reducedMotion: 'reduce'});
   try {
     const errors = [];
@@ -128,7 +129,7 @@ test('Chromium móvil: catálogo, carrito mixto, dirección canónica, costo y p
   }
 });
 
-test('Chromium escritorio: CP desconocido, varias colonias, error de tarifas y cambio de destino', async () => {
+test(engine.name()+' escritorio: CP desconocido, varias colonias, error de tarifas y cambio de destino', async () => {
   const page = await browser.newPage({viewport: {width: 1280, height: 900}, reducedMotion: 'reduce'});
   try {
     await page.goto(base);
@@ -269,8 +270,8 @@ test('Checkout móvil v2: enlace en otro contexto, reserva vencida y reporte tar
   } finally { await page.close(); }
 });
 
-test('Navegador y sandbox Floot: entrega local, aviso y ventana bancaria', {
-  skip: process.env.TARSI_TEST_LIVE_CHECKOUT !== '1'
+test('Navegador y sandbox Floot v2: entrega local, aviso y ventana bancaria', {
+  skip: process.env.TARSI_TEST_FLOOT_V2 !== '1'
 }, async () => {
   const {createHandler: orderHandler} = require('../netlify/functions/submit-order');
   const submit = orderHandler({env: {}});
@@ -278,7 +279,7 @@ test('Navegador y sandbox Floot: entrega local, aviso y ventana bancaria', {
   try {
     await page.route('**/.netlify/functions/submit-order', async route => {
       const source = event('POST', {body: route.request().postData()});
-      source.rawUrl = 'https://deploy-preview-6--tarsi-skydropx.netlify.app/.netlify/functions/submit-order';
+      source.rawUrl = 'https://deploy-preview-7--tarsi-skydropx.netlify.app/.netlify/functions/submit-order';
       const response = await submit(source);
       await route.fulfill({status: response.statusCode, headers: response.headers, body: response.body});
     });
@@ -298,7 +299,7 @@ test('Navegador y sandbox Floot: entrega local, aviso y ventana bancaria', {
     await waitText(page, '#orderReceipt', 'Por cotizar el día de la entrega');
     await waitText(page, '#transferDetails', '$399 MXN');
     await waitText(page, '#notificationStatus', 'aceptó la notificación');
-    const number = (await page.locator('#orderReceipt').innerText()).match(/TARSI-[A-F0-9]{32}/)?.[0];
+    const number = (await page.locator('#orderReceipt').innerText()).match(/TARSI-\d{6,}/)?.[0];
     assert.ok(number);
     console.log('Pedido real de prueba registrado:', number);
   } finally {

@@ -26,14 +26,23 @@ export async function reportTransfer(input:z.infer<typeof transferReport>,isTest
         return {status:200,orderId:order.id};
       return {status:409,error:'Ya recibimos un reporte. Contacta a TARSI para corregir sus datos.'};
     }
+    const orderId=order.id;
+    async function duplicateReference(){
+      const note='Referencia reportada en otro pedido';
+      const flagged=await sql`UPDATE tarsi_order_flow SET last_issue=${note} WHERE order_id=${orderId}::uuid
+        AND last_issue IS DISTINCT FROM ${note} RETURNING order_id`.execute(trx);
+      if(flagged.rows.length) await sql`INSERT INTO tarsi_web_order_history(order_id,status)
+        VALUES(${orderId}::uuid,${note})`.execute(trx);
+      return {status:409,error:'La referencia ya se utilizó. Contacta a TARSI para revisarla.'};
+    }
     if(reference) await sql`SELECT pg_advisory_xact_lock(${isTest?912:911},hashtext(${reference}))`.execute(trx);
     if(reference && (await sql`SELECT 1 FROM tarsi_verified_payments WHERE is_test=${isTest}
       AND reference_key=${reference} AND order_id<>${order.id}::uuid`.execute(trx)).rows.length)
-      return {status:409,error:'La referencia ya se utilizó. Contacta a TARSI para revisarla.'};
+      return duplicateReference();
     const inserted=await sql`INSERT INTO tarsi_transfer_reports(order_id,is_test,bank,reference,reference_key,transferred_on,cents,details)
       VALUES(${order.id}::uuid,${isTest},${input.bank},${input.reference||null},${reference||null},${input.date}::date,${input.cents},${input.details||null})
       ON CONFLICT DO NOTHING RETURNING order_id`.execute(trx);
-    if(!inserted.rows.length)return {status:409,error:'La referencia ya se utilizó. Contacta a TARSI para revisarla.'};
+    if(!inserted.rows.length)return duplicateReference();
     if(order.status!=='Cancelado')await sql`UPDATE tarsi_web_orders SET status='Pago por verificar' WHERE id=${order.id}::uuid`.execute(trx);
     const issue=order.status==='Cancelado'?'Transferencia en pedido cancelado':input.cents!==order.total*100?'Importe reportado distinto del total':null;
     if(issue)await sql`UPDATE tarsi_order_flow SET last_issue=${issue} WHERE order_id=${order.id}::uuid`.execute(trx);

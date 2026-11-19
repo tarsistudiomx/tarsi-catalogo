@@ -155,6 +155,8 @@ test('Floot v2 over isolated PostgreSQL: checkout, reservation, report, approval
     assert.equal(next.status,200);
     assert.notEqual((await next.json()).number,receipt.number);
     assert.equal((await send({...report,key:second.key})).status,409);
+    assert.equal((await pg.query('SELECT last_issue FROM tarsi_order_flow WHERE recovery_key=$1',[second.key])).rows[0].last_issue,
+      'Referencia reportada en otro pedido');
     assert.equal((await pg.query("SELECT count(*)::int AS n FROM tarsi_mail_outbox WHERE state='pending' AND attempts=1")).rows[0].n,1);
     await pg.exec("UPDATE tarsi_mail_outbox SET due_at=now() WHERE state='pending'");
     mailStatus = 200;
