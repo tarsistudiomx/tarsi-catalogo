@@ -226,3 +226,45 @@ test('Checkout móvil: datos incompletos, doble clic, red, reintento, confirmaci
     await page.close();
   }
 });
+
+test('Navegador y sandbox Floot: entrega local, aviso y ventana bancaria', {
+  skip: process.env.TARSI_TEST_LIVE_CHECKOUT !== '1'
+}, async () => {
+  const {createHandler: orderHandler} = require('../netlify/functions/submit-order');
+  const configured = Object.fromEntries([
+    'TARSI_DASHBOARD_TOKEN', 'TARSI_QUOTE_SECRET', 'TARSI_BANK_NAME', 'TARSI_BANK_HOLDER', 'TARSI_BANK_CLABE'
+  ].map(key => [key, process.env[key]]));
+  const submit = orderHandler({catalog, env: {
+    ...configured,
+    TARSI_DASHBOARD_URL: 'https://66f62c32-15c0-4546-ba6e-bce0efe72d71.sandbox.floot.app/_api/tarsi_web_order'
+  }});
+  const page = await browser.newPage({viewport: {width: 768, height: 1024}});
+  try {
+    await page.route('**/.netlify/functions/submit-order', async route => {
+      const source = event('POST', {body: route.request().postData()});
+      source.rawUrl = route.request().url();
+      const response = await submit(source);
+      await route.fulfill({status: response.statusCode, headers: response.headers, body: response.body});
+    });
+    await page.goto(base);
+    await selectProduct(page, 0, 'M', 1);
+    await page.click('#navCart');
+    await page.fill('#buyer', 'PRUEBA BROWSER TARSI');
+    await page.fill('#phone', '5555550000');
+    await page.selectOption('#delivery', 'Entrega en Querétaro');
+    await page.fill('#zipCode', '76099');
+    await page.waitForFunction(() => !document.querySelector('#neighborhood').disabled);
+    await page.fill('#neighborhood', 'Plazas del Sol 2a Sección');
+    await page.fill('#street', 'Calle de prueba 123');
+    await page.click('#emailOrder');
+    await waitText(page, '#orderConfirmation', '¡TU PEDIDO FUE RECIBIDO!');
+    await waitText(page, '#orderReceipt', 'Por cotizar el día de la entrega');
+    await waitText(page, '#transferDetails', '$399 MXN');
+    await waitText(page, '#notificationStatus', 'aceptó la notificación');
+    const number = (await page.locator('#orderReceipt').innerText()).match(/TARSI-[A-F0-9]{32}/)?.[0];
+    assert.ok(number);
+    console.log('Pedido real de prueba registrado:', number);
+  } finally {
+    await page.close();
+  }
+});
