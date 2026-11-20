@@ -256,6 +256,19 @@ test('Checkout móvil v2: enlace en otro contexto, reserva vencida y reporte tar
     assert.equal(new URL(page.url()).hash,'');
     assert.equal(await page.locator('#transferDetails').isVisible(),false);
     await waitText(page,'#holdStatus','Renueva antes de transferir');
+    await page.reload();
+    await page.click('#resumePurchaseButton');
+    await waitText(page,'#orderConfirmation','¡TU PEDIDO FUE RECIBIDO!');
+    await waitText(page,'#holdStatus','Renueva antes de transferir');
+    await page.evaluate(() => Object.defineProperty(navigator,'clipboard',{
+      value:{writeText:async value=>{window.copied=value;}},configurable:true
+    }));
+    await page.click('#copyPaymentLink');
+    await waitText(page,'#paymentLinkStatus','Enlace copiado');
+    const savedLink = new URL(await page.evaluate(() => window.copied));
+    assert.equal(savedLink.hash,'#pedido='+key);
+    assert.equal(savedLink.search,'');
+    assert.equal(new URL(page.url()).hash,'');
     await page.click('#renewReservation');
     await waitText(page,'#holdStatus','Reserva disponible');
     await page.click('#openReport');

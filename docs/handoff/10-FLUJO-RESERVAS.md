@@ -77,3 +77,9 @@ TARSI_BROWSER=webkit npm run test:browser
 El pedido sintético `TARSI-000006` figura como `Pago por verificar` en la rama de Floot. El reporte del cliente se había guardado con éxito. Se cambió la vista previa del Dashboard para abrir en **Pagos por verificar** y cargar pedidos de prueba al abrir su dominio sandbox. El folio es visible en cada fila y la búsqueda de una coincidencia abre su detalle en la bandeja correspondiente. El Dashboard actualiza los pedidos cuando la ventana recupera el foco o el administrador pulsa Actualizar.
 
 En el checkout, el paso **Envía tu comprobante** aparece arriba del resumen después de reportar la transferencia. Instagram y correo son alternativas. Correo copia `tarsi.studiomx@gmail.com` y da el asunto `Comprobante de pago · TARSI-000006` como ejemplo de folio. El cliente adjunta su captura. El reporte va a verificación y la confirmación en Nu sigue siendo exclusiva del administrador.
+
+### Regreso después de la transferencia
+
+El encabezado de la tienda muestra **Continuar mi pedido** cuando hay un pedido recuperable guardado en ese navegador. El modal permite copiar un enlace privado para volver desde otro dispositivo. Safari conserva el pedido guardado mientras conserve sus datos del sitio. Si se borra ese almacenamiento, se necesita el enlace. La reserva vence según su fecha original y un reporte tardío sigue siendo posible.
+
+En vista previa, los correos quedan en la bandeja de pruebas de Floot. Se verificó ahí el correo de registro de `TARSI-000009`. La prueba de entrega a Gmail requiere el transporte de producción en un entorno autorizado.

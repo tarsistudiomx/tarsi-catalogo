@@ -6,6 +6,7 @@
   const api = location.hostname === 'tarsistudiomx.github.io' ? 'https://tarsi-skydropx.netlify.app' : '';
   const preview = /^deploy-preview-\d+--tarsi-skydropx\.netlify\.app$/.test(location.hostname);
   const draftKey = 'tarsi-checkout-attempt';
+  const savedOrderKey = 'tarsi-saved-order';
   const fields = [...document.querySelectorAll('.cart-modal .checkout input, .cart-modal .checkout select')];
   let attempt;
   let receipt;
@@ -14,7 +15,6 @@
     Pagado:'PAGO VERIFICADO','En preparación':'PAGO VERIFICADO · EN PREPARACIÓN',Enviado:'PAGO VERIFICADO · ENVIADO',Entregado:'PAGO VERIFICADO · ENTREGADO'};
   const linkedKey = new URLSearchParams(location.hash.slice(1)).get('pedido');
   const fromLink = linkedKey && /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(linkedKey);
-  if (fromLink) history.replaceState(null,'',location.pathname+location.search);
 
   function draft() {
     const value = id => $(id).value.trim();
@@ -63,9 +63,17 @@
 
   let shareText = '';
   let recoveryKey = '';
-  try { recoveryKey = JSON.parse(localStorage.getItem(draftKey))?.key || ''; } catch {}
+  let savedKey = '';
+  try {
+    savedKey = localStorage.getItem(savedOrderKey) || '';
+    recoveryKey = savedKey || JSON.parse(localStorage.getItem(draftKey))?.key || '';
+  } catch {}
   if (fromLink) recoveryKey = linkedKey;
-  $('recoverOrder').hidden = !recoveryKey;
+  function showRecoveryControls() {
+    $('recoverOrder').hidden = !recoveryKey;
+    $('resumePurchase').hidden = !recoveryKey;
+  }
+  showRecoveryControls();
   function share(order, quote, saved) {
     if (!order.items.length) return toast('AGREGA AL MENOS UNA PLAYERA');
     shareText = summary(order, quote, saved);
@@ -122,6 +130,11 @@
     $('proofNumber').textContent = data.number;
     $('proofSubject').textContent = 'Comprobante de pago · ' + data.number;
     $('legacyReceiptActions').hidden = Boolean(data.isFlow);
+    $('savePaymentLink').hidden = !data.isFlow || !recoveryKey ||
+      !['Pendiente de pago','Pago por verificar','Cancelado'].includes(data.status);
+    $('paymentLinkStatus').textContent = '';
+    $('manualPaymentLink').hidden = true;
+    $('manualPaymentLink').value = '';
     $('openReport').hidden = !data.isFlow || data.reported || !['Pendiente de pago','Pago por verificar','Cancelado'].includes(data.status);
     clearInterval(timer);
     const refreshHold = () => {
@@ -175,6 +188,22 @@
   };
   $('copyProofAddress').onclick = () => void copyProof(proofAddress,'Correo copiado.');
   $('copyProofSubject').onclick = () => void copyProof($('proofSubject').textContent,'Asunto copiado.');
+
+  $('copyPaymentLink').onclick = async () => {
+    if (!recoveryKey) return;
+    const link = new URL(location.pathname,location.origin);
+    link.hash = new URLSearchParams({pedido:recoveryKey}).toString();
+    try {
+      await copy(link.href);
+      $('paymentLinkStatus').textContent = 'Enlace copiado. Guárdalo en un lugar privado.';
+    } catch {
+      const input = $('manualPaymentLink');
+      input.value = link.href;
+      input.hidden = false;
+      input.select();
+      $('paymentLinkStatus').textContent = 'Copia el enlace y guárdalo en un lugar privado.';
+    }
+  };
 
   async function getAttempt(order) {
     const hash = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(JSON.stringify(order)));
@@ -233,7 +262,7 @@
   };
 
   let busy = false;
-  async function submit(notify, recover = false) {
+  async function submit(notify, recover = false, recoveryFeedback) {
     if (busy) return;
     const order = recover ? null : draft();
     if (!recover && !order.items.length) return toast('AGREGA AL MENOS UNA PLAYERA');
@@ -241,7 +270,7 @@
     const fee = quote?.customer_price ?? (order?.delivery === 'Entrega en Querétaro' ? 0 : null);
     const form = document.querySelector('.cart-modal .checkout');
     busy = button.disabled = $('emailOrder').disabled = $('emailReceipt').disabled = form.inert = $('cartItems').inert = true;
-    const feedback = $('orderConfirmation').open ? $('notificationStatus') : status;
+    const feedback = recoveryFeedback || ($('orderConfirmation').open ? $('notificationStatus') : status);
     feedback.textContent = 'Procesando…';
     try {
       if (!recover) {
@@ -253,7 +282,7 @@
         if (navigator.locks) await navigator.locks.request(draftKey, loadAttempt);
         else await loadAttempt();
         recoveryKey = attempt.key;
-        $('recoverOrder').hidden = false;
+        showRecoveryControls();
       }
       const payload = recover ? {key: recoveryKey, recover: true, notify} : {
         ...order, key: recoveryKey, notify, proof: quote?.proof,
@@ -262,9 +291,10 @@
       const result = await requestOrder(payload);
       if (!result.number || !Array.isArray(result.items)) throw new Error();
       receipt = result;
-      if(recover && fromLink){
-        try{localStorage.setItem(draftKey,JSON.stringify({key:recoveryKey}));}catch{}
-      }
+      if (recover && fromLink) history.replaceState(null,'',location.pathname+location.search);
+      savedKey = recoveryKey;
+      try { localStorage.setItem(savedOrderKey,savedKey); } catch {}
+      showRecoveryControls();
       if (!recover) { cart = []; save(); renderCart(); }
       feedback.textContent = '';
       showReceipt(receipt);
@@ -278,6 +308,11 @@
   button.onclick = () => submit(false);
   $('emailOrder').onclick = () => submit(true);
   $('recoverOrder').onclick = () => submit(false, true);
+  $('resumePurchaseButton').onclick = () => {
+    if (busy) return;
+    if (savedKey) recoveryKey = savedKey;
+    void submit(false, true, $('resumePurchaseStatus'));
+  };
   $('emailReceipt').onclick = () => submit(true, true);
   if (fromLink) {
     $('navCart').click();
