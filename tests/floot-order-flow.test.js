@@ -1,7 +1,7 @@
 'use strict';
 
 const assert = require('node:assert/strict');
-const {randomUUID} = require('node:crypto');
+const {createHash, randomUUID} = require('node:crypto');
 const {mkdtempSync, readFileSync, readdirSync, mkdirSync, writeFileSync, rmSync, symlinkSync} = require('node:fs');
 const {tmpdir} = require('node:os');
 const {join, resolve} = require('node:path');
@@ -74,7 +74,9 @@ test('Floot v2 over isolated PostgreSQL: checkout, reservation, report, approval
     process.env.JWT_SECRET = 'test-only-hmac-secret';
     process.env.TARSI_TEST_STOREFRONT_URL = 'https://deploy-preview-7--tarsi-skydropx.netlify.app/';
     process.env.TARSI_PREVIEW_STOREFRONT_KEY='synthetic-preview-key-at-least-32';
-    process.env.TARSI_STOREFRONT_KEY='synthetic-live-key-at-least-32-characters';
+    delete process.env.TARSI_STOREFRONT_KEY;
+    const liveKey='synthetic-live-key-at-least-32-characters';
+    const workerKey='synthetic-live-worker-key-at-least-32-characters';
     const mails = [];
     let mailStatus = 200;
     global.fetch = async (url, options) => {
@@ -93,7 +95,7 @@ test('Floot v2 over isolated PostgreSQL: checkout, reservation, report, approval
     const drain = require(join(root,'helpers/orderFlowMail.js')).drainOrderMail;
     const send = (data,isTest=true,authorized=true) => checkout(new Request('https://sandbox.example/_api/test',{
       method:'POST',headers:{...(isTest?{'x-tarsi-preview':'checkout-v1'}:{'x-tarsi-storefront':'storefront-v1'}),
-        Authorization:authorized?'Bearer '+process.env[isTest?'TARSI_PREVIEW_STOREFRONT_KEY':'TARSI_STOREFRONT_KEY']:''},body:JSON.stringify(data)
+        Authorization:authorized?'Bearer '+(isTest?process.env.TARSI_PREVIEW_STOREFRONT_KEY:liveKey):''},body:JSON.stringify(data)
     }),isTest,true);
     const manage = (data, authorized=true) => admin(new Request('https://sandbox.example/_api/admin',{
       method:'POST',headers:{origin:'https://sandbox.example',...(authorized?{'x-test-admin':'1'}:{})},body:JSON.stringify({test:true,...data})
@@ -175,6 +177,15 @@ test('Floot v2 over isolated PostgreSQL: checkout, reservation, report, approval
     assert.equal((await (await send({mode:'recover',key:recoveredKey})).json()).number,receipt.number);
     await pg.exec("INSERT INTO tarsi_live_checkout_config(enabled,bank,holder,clabe) VALUES(true,'Banco de prueba','Titular de prueba','000000000000000000')");
     await pg.exec("INSERT INTO tarsi_blank_policy VALUES(false,true); INSERT INTO tarsi_blank_stock VALUES(false,'M',1,0,NULL)");
+    assert.equal((await send(fixture(),false)).status,403);
+    const hash = key => createHash('sha256').update('Bearer '+key).digest('hex');
+    await pg.query('INSERT INTO tarsi_live_integration (storefront_auth_sha256,mail_auth_sha256) VALUES($1,$2)',
+      [hash(liveKey),hash(workerKey)]);
+    const worker=require(join(root,'endpoints/tarsi_mail_worker_POST.js')).handle;
+    const runWorker=key=>worker(new Request('https://tarsi-control-ventas.floot.app/_api/tarsi_mail_worker',
+      {method:'POST',headers:{Authorization:'Bearer '+key}}));
+    assert.equal((await runWorker(liveKey)).status,403);
+    assert.equal((await runWorker(workerKey)).status,200);
     const national = {...fixture(),delivery:'Envío nacional',acceptedTotal:549};
     const quote = await (await send({mode:'quote',quantity:1,destination:national.address},false)).json();
     assert.equal(quote.customer_price,150);

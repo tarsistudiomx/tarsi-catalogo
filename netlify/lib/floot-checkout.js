@@ -32,6 +32,10 @@ async function flootCheckout(body, mode, deployment, fetcher = fetch) {
           !/^[a-f0-9-]{36}\.sandbox\.floot\.app$/.test(origin.hostname)) throw new Error('Floot branch required');
       target = new URL('/_api/tarsi_preview_checkout_v2', origin);
     }
+    if (!preview && !(key?.length >= 32)) {
+      const config = await getDeployStore({region:'us-east-1'}).get('tarsi-live-integration', {type:'json'});
+      key = config?.key;
+    }
     if (!legacy && (typeof key !== 'string' || key.length < 32)) throw new Error('Storefront key required');
     const response = await fetcher(String(target), {
       method: 'POST',

@@ -1,4 +1,4 @@
-import {matchesBearer,previewIntegration} from './previewIntegration';
+import {liveIntegration,matchesBearer,previewIntegration} from './previewIntegration';
 import {createCipheriv,createDecipheriv,createHash,createHmac,randomBytes} from 'node:crypto';
 import {sql} from 'kysely';
 import {db} from './db';
@@ -84,8 +84,8 @@ export async function handleStorefront(request:Request,isTest:boolean, flow=fals
     if(flow){
       const env=process.env as Record<string,string|undefined>;
       const key=isTest?env.TARSI_PREVIEW_STOREFRONT_KEY:env.TARSI_STOREFRONT_KEY;
-      const testConfig=isTest&&!key ? await previewIntegration() : undefined;
-      if(!matchesBearer(request.headers.get('authorization')||'',key,testConfig?.storefrontAuthSha256))
+      const configured = !key ? await (isTest ? previewIntegration() : liveIntegration()) : undefined;
+      if(!matchesBearer(request.headers.get('authorization')||'',key,configured?.storefrontAuthSha256))
         return json({error:'Solicitud no válida.'},403);
     }
     const table = sql.table(isTest ? 'tarsi_preview_checkout_config' : 'tarsi_live_checkout_config');

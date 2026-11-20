@@ -15,3 +15,10 @@ export async function previewIntegration() {
   `.execute(db);
   return result.rows[0];
 }
+
+export async function liveIntegration() {
+  const result=await sql<{storefrontAuthSha256:string;mailAuthSha256:string}>`
+    SELECT storefront_auth_sha256,mail_auth_sha256 FROM tarsi_live_integration WHERE slot
+  `.execute(db);
+  return result.rows[0];
+}
