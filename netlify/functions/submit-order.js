@@ -54,7 +54,10 @@ function createHandler({env = process.env, catalog = postal, fetcher = fetch} = 
     if ((event.body?.length ?? 0) > 16000) throw invalid('El pedido excede el tamaño permitido.');
     const body = readBody(event);
     const mode = storefrontMode(event);
-    if (mode) return flootCheckout(body, body.recover === true ? 'recover' : 'checkout', mode, fetcher);
+    if (mode) {
+      const action = ['report','renew'].includes(body.mode) ? body.mode : body.recover === true ? 'recover' : 'checkout';
+      return flootCheckout(body, action, mode, fetcher);
+    }
     if (typeof body.key !== 'string' || !uuid.test(body.key)) throw invalid('No se pudo identificar el intento.');
     const order = body.recover === true ? null : readOrder(body);
     if (!env.TARSI_DASHBOARD_URL || !env.TARSI_DASHBOARD_TOKEN || !(env.TARSI_QUOTE_SECRET?.length >= 32)) {

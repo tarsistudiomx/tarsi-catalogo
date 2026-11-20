@@ -15,30 +15,85 @@ test('Floot preview matches the active product names and prices', () => {
   assert.ok(source.includes(subtotal.toString().replace('quantity =>', '(quantity: number) =>')));
 });
 
-test('Only PR #6 forwards quote, submission and recovery to Floot without Netlify secrets', async () => {
+test('The new preview forwards reports, renewals, quotes and checkout to Floot with server-only authentication', async t => {
+  const key = 'synthetic-preview-auth-key-at-least-32';
+  const savedKey = process.env.TARSI_PREVIEW_STOREFRONT_KEY;
+  process.env.TARSI_PREVIEW_STOREFRONT_KEY = key;
+  t.after(() => {
+    if (savedKey === undefined) delete process.env.TARSI_PREVIEW_STOREFRONT_KEY;
+    else process.env.TARSI_PREVIEW_STOREFRONT_KEY = savedKey;
+  });
+  const saved = process.env.TARSI_FLOOT_PREVIEW_ORIGIN;
+  t.after(() => {
+    if (saved === undefined) delete process.env.TARSI_FLOOT_PREVIEW_ORIGIN;
+    else process.env.TARSI_FLOOT_PREVIEW_ORIGIN = saved;
+  });
+  process.env.TARSI_FLOOT_PREVIEW_ORIGIN = 'https://a5112529-9f7b-46bf-b94b-3a7cc76b3b15.sandbox.floot.app';
   const calls = [];
   const fetcher = async (url, request) => {
     calls.push(JSON.parse(request.body));
-    assert.match(url, /\.sandbox\.floot\.app\/_api\/tarsi_preview_checkout$/);
+    assert.match(url, /\.sandbox\.floot\.app\/_api\/tarsi_preview_checkout_v2$/);
     assert.equal(request.headers['X-Tarsi-Preview'], 'checkout-v1');
-    assert.equal(request.headers.Authorization, undefined);
+    assert.equal(request.headers.Authorization, 'Bearer ' + key);
     return Response.json({ok:true});
   };
-  const request = body => ({...event('POST',{body}), rawUrl:'https://deploy-preview-6--tarsi-skydropx.netlify.app/.netlify/functions/test'});
+  const request = body => ({...event('POST',{body}), rawUrl:'https://deploy-preview-7--tarsi-skydropx.netlify.app/.netlify/functions/test'});
   assert.equal(unpack(await quote({env:{},fetcher})(request({quantity:1,destination:{}}))).status, 200);
   assert.equal(unpack(await submit({env:{},fetcher})(request({notify:true}))).status, 200);
   assert.equal(unpack(await submit({env:{},fetcher})(request({recover:true}))).status, 200);
-  assert.deepEqual(calls.map(call=>call.mode),['quote','checkout','recover']);
+  assert.equal(unpack(await submit({env:{},fetcher})(request({mode:'report'}))).status, 200);
+  assert.equal(unpack(await submit({env:{},fetcher})(request({mode:'renew'}))).status, 200);
+  assert.deepEqual(calls.map(call=>call.mode),['quote','checkout','recover','report','renew']);
   assert.equal(unpack(await submit({env:{},fetcher})(event('POST',{body:{}}))).status, 400);
 });
 
-test('Published checkout routes to Floot while the carrier endpoint stays independent', async () => {
+test('Preview integration can be read from a private deploy-scoped Blob', async t => {
+  const previewUrl = 'https://deploy-preview-7--tarsi-skydropx.netlify.app';
+  const origin = 'https://a5112529-9f7b-46bf-b94b-3a7cc76b3b15.sandbox.floot.app';
+  const key = 'synthetic-preview-blob-key-at-least-32';
+  const envKeys = ['TARSI_PREVIEW_STOREFRONT_KEY', 'TARSI_FLOOT_PREVIEW_ORIGIN', 'NETLIFY_BLOBS_CONTEXT'];
+  const previous = Object.fromEntries(envKeys.map(name => [name, process.env[name]]));
+  for (const name of envKeys) delete process.env[name];
+  t.after(() => {
+    for (const [name, value] of Object.entries(previous)) {
+      if (value === undefined) delete process.env[name];
+      else process.env[name] = value;
+    }
+  });
+  const mock = t.mock.method(globalThis, 'fetch', async (url, options) => {
+    assert.match(String(url), /blobs\.example\/region:us-east-1\/fixture-site\/deploy:0123456789abcdef01234567.*\/tarsi-preview-integration/);
+    assert.equal(options.headers.authorization, 'Bearer fixture-blob-token');
+    return Response.json({origin, key});
+  });
+  const handler = submit({env: {}, fetcher: async (url, options) => {
+    assert.equal(url, origin + '/_api/tarsi_preview_checkout_v2');
+    assert.equal(options.headers.Authorization, 'Bearer ' + key);
+    assert.deepEqual(JSON.parse(options.body), {recover: true, mode: 'recover'});
+    return Response.json({number:'TARSI-000001'});
+  }});
+  const response = await handler({
+    ...event('POST', {body:{recover:true},headers:{'x-nf-site-id':'fixture-site','x-nf-deploy-id':'0123456789abcdef01234567'}}),
+    rawUrl: previewUrl + '/.netlify/functions/submit-order',
+    blobs: Buffer.from(JSON.stringify({url:'https://blobs.example',token:'fixture-blob-token'})).toString('base64')
+  });
+  assert.deepEqual(unpack(response),{status:200,data:{number:'TARSI-000001'}});
+  assert.equal(mock.mock.callCount(),1);
+});
+
+test('Published checkout routes to Floot while the carrier endpoint stays independent', async t => {
+  const key = 'synthetic-live-auth-key-at-least-32';
+  const previous = process.env.TARSI_STOREFRONT_KEY;
+  process.env.TARSI_STOREFRONT_KEY = key;
+  t.after(() => {
+    if (previous === undefined) delete process.env.TARSI_STOREFRONT_KEY;
+    else process.env.TARSI_STOREFRONT_KEY = previous;
+  });
   const checkoutQuote = require('../netlify/functions/checkout-quote').createHandler;
   const calls = [];
   const fetcher = async (url, request) => {
-    assert.equal(url, 'https://tarsi-control-ventas.floot.app/_api/tarsi_live_checkout');
+    assert.equal(url, 'https://tarsi-control-ventas.floot.app/_api/tarsi_live_checkout_v2');
     assert.equal(request.headers['X-Tarsi-Storefront'], 'storefront-v1');
-    assert.equal(request.headers.Authorization, undefined);
+    assert.equal(request.headers.Authorization, 'Bearer ' + key);
     calls.push(JSON.parse(request.body).mode);
     return Response.json({ok:true});
   };

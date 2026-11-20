@@ -15,15 +15,38 @@ const checkout = lookup.extend({
   customer:z.object({
     name:z.string().trim().min(2).max(120),
     phone:z.string().max(30).transform(value=>value.replace(/[\s().-]/g,'').replace(/^\+52/,'')).pipe(z.string().regex(/^\d{10}$/)),
-    email:z.union([z.literal(''),z.email().max(254)]).default('')
+    email:z.string().max(254).email().or(z.literal(''))
   }),
   address:destination.extend({street:z.string().trim().min(2).max(200)}),
   delivery:z.enum(['Entrega en Querétaro','Envío nacional']),
   proof:z.string().max(4096).optional(),
   acceptedTotal:z.number().int().positive().max(100000)
 });
-export const schema = z.discriminatedUnion('mode',[
+const initialSchema = z.discriminatedUnion('mode',[
   quoteRequest.extend({mode:z.literal('quote')}),
   checkout.extend({mode:z.literal('checkout')}),
   lookup.extend({mode:z.literal('recover')})
 ]);
+
+export const transferReport = lookup.extend({
+  mode:z.literal('report'),
+  bank:z.string().trim().min(2).max(80),
+  reference:z.string().trim().max(45).regex(/^[\p{L}\p{N} ._\/-]*$/u).optional().default(''),
+  date:z.iso.date(),
+  cents:z.number().int().positive().max(10000000),
+  details:z.string().trim().max(350).optional().default('')
+}).refine(value=>value.reference.length>=5||value.details.length>=10,
+  {message:'Ingresa la clave de rastreo o datos para localizar la transferencia.'});
+const newCheckout = checkout.extend({
+  items: checkout.shape.items.refine(items=>items.every(item=>item.size!=='XS')),
+  customer: checkout.shape.customer.extend({email:z.email().max(254)})
+});
+export const orderAction = z.discriminatedUnion('mode',[
+  quoteRequest.extend({mode:z.literal('quote')}),
+  newCheckout.extend({mode:z.literal('checkout')}),
+  lookup.extend({mode:z.literal('recover')}),
+  transferReport,
+  lookup.extend({mode:z.literal('renew')})
+]);
+
+export const schema = initialSchema;

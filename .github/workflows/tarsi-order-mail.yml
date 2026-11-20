@@ -1,0 +1,26 @@
+name: TARSI order mail
+on:
+  schedule:
+    - cron: '3,8,13,18,23,28,33,38,43,48,53,58 * * * *'
+  workflow_dispatch:
+permissions: {}
+concurrency:
+  group: tarsi-order-mail
+  cancel-in-progress: false
+jobs:
+  dispatch:
+    if: vars.TARSI_MAIL_SCHEDULER_ENABLED == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    steps:
+      - name: Process due order mail
+        env:
+          TARSI_MAIL_WORKER_KEY: ${{ secrets.TARSI_MAIL_WORKER_KEY }}
+        shell: bash
+        run: |
+          set -eu
+          test -n "$TARSI_MAIL_WORKER_KEY"
+          curl --fail --silent --show-error --max-time 55 -o /dev/null \
+            -H "Authorization: Bearer $TARSI_MAIL_WORKER_KEY" \
+            -H "Content-Type: application/json" --data '{}' \
+            https://tarsi-control-ventas.floot.app/_api/tarsi_mail_worker

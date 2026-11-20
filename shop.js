@@ -12,7 +12,7 @@
   ].map(([name, category, photo], id) => ({
     name, category, image: 'assets/' + (photo ?? 'playera-' + String(id + 1).padStart(2, '0') + '.jpg')
   }));
-  const sizes = ['XS', 'S', 'M', 'L', 'XL', 'XXL'];
+  const sizes = ['S', 'M', 'L', 'XL', 'XXL'];
   const maxQuantity = 30;
   const unitPrice = 399;
   const subtotal = quantity => Math.floor(quantity / 3) * 999 + [0, 399, 699][quantity % 3];
