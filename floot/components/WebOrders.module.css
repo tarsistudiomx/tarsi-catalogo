@@ -44,3 +44,8 @@
 .adjustment label { display: block; }
 .adjustment label > select { display: block; width: 100%; padding: 8px; }
 .adjustment button { justify-self: start; }
+
+.workflow{display:flex;flex-wrap:wrap;gap:.55rem 1rem;align-items:center;color:#355b48;margin:1rem 0}
+.environment,.report{display:block;padding:.65rem .85rem;border-radius:.55rem;background:#f4ebdd;color:#191815}
+.customer small{color:#355b48;font-weight:600;overflow-wrap:anywhere}
+.filters button[data-stage="verify"] span{background:#f4ebdd;color:#191815;border-radius:1rem;padding:.15rem .45rem}

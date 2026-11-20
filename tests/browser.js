@@ -264,9 +264,19 @@ test('Checkout móvil v2: enlace en otro contexto, reserva vencida y reporte tar
     await page.locator('[name="date"]').fill(new Date().toISOString().slice(0,10));
     await page.locator('[name="amount"]').fill('399');
     await page.click('#transferReport button[type="submit"]');
-    await waitText(page,'#orderConfirmation','¡Recibimos tu reporte de transferencia!');
+    await waitText(page,'#orderConfirmation','TRANSFERENCIA REPORTADA');
     assert.equal(await page.locator('#transferDetails').isVisible(),false);
     assert.equal(await page.locator('#proofInstagram').isVisible(),true);
+    assert.equal(await page.locator('#legacyReceiptActions').isVisible(),false);
+    await page.evaluate(() => Object.defineProperty(navigator, 'clipboard', {
+      value: {writeText: async value => {window.copied = value;}}, configurable: true
+    }));
+    await page.click('#proofEmail');
+    await waitText(page,'#proofCopyStatus','Correo copiado');
+    assert.equal(await page.evaluate(() => window.copied),'tarsi.studiomx@gmail.com');
+    await waitText(page,'#proofEmailDetails','Comprobante de pago · TARSI-000001');
+    await page.click('#copyProofSubject');
+    assert.equal(await page.evaluate(() => window.copied),'Comprobante de pago · TARSI-000001');
   } finally { await page.close(); }
 });
 
@@ -311,7 +321,7 @@ test('Navegador y sandbox Floot v2: entrega local, folio, ventana bancaria y rep
     await page.locator('[name="date"]').fill(new Intl.DateTimeFormat('en-CA',{timeZone:'America/Mexico_City',year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date()));
     await page.locator('[name="amount"]').fill('399');
     await page.click('#transferReport button[type="submit"]');
-    await waitText(page,'#orderConfirmation','¡Recibimos tu reporte de transferencia!');
+    await waitText(page,'#orderConfirmation','TRANSFERENCIA REPORTADA');
     console.log('Pedido sintético registrado y reportado:', number);
   } finally {
     await page.close();

@@ -89,7 +89,8 @@
     }
     line('Pedido', data.number);
     line('Estado', data.isFlow ? labels[data.status] || data.status : data.status);
-    if (preview) line('Modo de prueba. No realices una transferencia.', 'En el Dashboard, abre Pedidos y luego Ver pedidos de prueba.');
+    $('previewPaymentNotice').hidden = !preview;
+    $('receiptSummary').open = !data.isFlow;
     for (const item of data.items) line(item.name, 'Talla ' + item.size + ' · ' + item.qty + ' pieza(s)');
     line('Subtotal', money(data.subtotal));
     const local = data.delivery === 'Entrega en Querétaro';
@@ -113,7 +114,14 @@
       }
     }
     $('transferReport').hidden = true;
-    $('proofInstagram').hidden = data.isFlow && !data.reported;
+    const needsProof = data.isFlow && data.reported && ['Pago por verificar','Cancelado'].includes(data.status);
+    $('proofOptions').hidden = !needsProof;
+    $('proofEmailDetails').hidden = true;
+    $('proofEmail').setAttribute('aria-expanded','false');
+    $('proofCopyStatus').textContent = '';
+    $('proofNumber').textContent = data.number;
+    $('proofSubject').textContent = 'Comprobante de pago · ' + data.number;
+    $('legacyReceiptActions').hidden = Boolean(data.isFlow);
     $('openReport').hidden = !data.isFlow || data.reported || !['Pendiente de pago','Pago por verificar','Cancelado'].includes(data.status);
     clearInterval(timer);
     const refreshHold = () => {
@@ -131,11 +139,13 @@
     refreshHold();
     if (data.holdUntil) timer=setInterval(refreshHold,1000);
     if (!$('orderConfirmation').open) $('orderConfirmation').showModal();
-    $('orderReceived').textContent = fromLink ? 'TU PEDIDO SIGUE AQUÍ' : '¡TU PEDIDO FUE RECIBIDO!';
-    $('orderReceived').nextElementSibling.textContent = data.reported && ['Pago por verificar','Cancelado'].includes(data.status)
-      ? '¡Recibimos tu reporte de transferencia! Verificaremos el depósito y te notificaremos cuando tu pedido esté confirmado.'
-      : data.status === 'Pendiente de pago' ? 'Guardamos tu selección. La solicitud aún no confirma el pago.'
-        : 'Consulta el estado actual de tu pedido.';
+    $('orderReceived').textContent = needsProof ? 'TRANSFERENCIA REPORTADA'
+      : fromLink ? 'TU PEDIDO SIGUE AQUÍ' : '¡TU PEDIDO FUE RECIBIDO!';
+    $('orderIntro').textContent = needsProof
+      ? 'Falta el comprobante. TARSI verificará el depósito antes de confirmar tu pedido.'
+      : data.status === 'Pendiente de pago' ? 'Pedido ' + data.number + ' · ' + money(data.total) + '. Transfiere y después envía tu comprobante.'
+        : 'Pedido ' + data.number + ' · ' + (labels[data.status] || data.status) + '.';
+    $('orderConfirmation').scrollTop = 0;
     $('notificationStatus').textContent = ({
       accepted: 'El proveedor de correo aceptó la notificación.',
       retry: 'El pedido está registrado. Vuelve a intentar el correo desde esta ventana.',
@@ -152,6 +162,19 @@
     try { await copy(value()); $('notificationStatus').textContent = 'Copiado.'; }
     catch { $('notificationStatus').textContent = 'No se pudo copiar.'; }
   };
+
+  const proofAddress = 'tarsi.studiomx@gmail.com';
+  function copyProof(value, success) {
+    return copy(value).then(() => { $('proofCopyStatus').textContent = success; },
+      () => { $('proofCopyStatus').textContent = 'Selecciona el texto para copiarlo manualmente.'; });
+  }
+  $('proofEmail').onclick = () => {
+    $('proofEmailDetails').hidden = false;
+    $('proofEmail').setAttribute('aria-expanded','true');
+    void copyProof(proofAddress,'Correo copiado. Adjunta tu comprobante y usa el asunto indicado.');
+  };
+  $('copyProofAddress').onclick = () => void copyProof(proofAddress,'Correo copiado.');
+  $('copyProofSubject').onclick = () => void copyProof($('proofSubject').textContent,'Asunto copiado.');
 
   async function getAttempt(order) {
     const hash = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(JSON.stringify(order)));
@@ -173,6 +196,7 @@
     });
   }
   $('openReport').onclick=()=>{
+    $('openReport').hidden=true;
     $('transferReport').hidden=false;
     $('transferReport').elements.bank.focus();
   };
@@ -181,24 +205,31 @@
     busy=true;
     const control=payload.mode==='renew' ? $('renewReservation') : $('transferReport').querySelector('button[type="submit"]');
     control.disabled=true;
-    $('notificationStatus').textContent='Procesando…';
+    const feedback = $(payload.mode==='report' ? 'transferReportStatus' : 'notificationStatus');
+    feedback.textContent='Procesando…';
     try{
       const result=await requestOrder({key:recoveryKey,...payload});
       receipt=result.reported===true && !result.number ? await requestOrder({key:recoveryKey,recover:true}) : result;
       showReceipt(receipt);
-    }catch(error){$('notificationStatus').textContent=error.message||'No pudimos guardar el cambio.';}
+      if(payload.mode==='report') $('proofTitle').focus({preventScroll:true});
+    }catch(error){feedback.textContent=error.message||'No pudimos guardar el cambio.';}
     finally{busy=false;control.disabled=false;}
   }
   $('renewReservation').onclick=()=>void updateReceipt({mode:'renew'});
   $('transferReport').onsubmit=e=>{
     e.preventDefault();
     const values=new FormData(e.currentTarget);
+    const reference=String(values.get('reference')||'').trim();
+    const details=String(values.get('details')||'').trim();
     const amount=String(values.get('amount')||'').trim().replace(',','.');
     if(!/^\d{1,7}(?:\.\d{1,2})?$/.test(amount)||Number(amount)<=0){
-      $('notificationStatus').textContent='Ingresa un importe válido en pesos.';return;
+      $('transferReportStatus').textContent='Ingresa un importe válido en pesos.';return;
     }
-    void updateReceipt({mode:'report',bank:values.get('bank'),reference:values.get('reference'),
-      date:values.get('date'),details:values.get('details'),cents:Math.round(Number(amount)*100)});
+    if(reference.length<5 && details.length<10){
+      $('transferReportStatus').textContent='Escribe la clave de rastreo o el concepto que usaste en la transferencia.';return;
+    }
+    void updateReceipt({mode:'report',bank:values.get('bank'),reference,
+      date:values.get('date'),details,cents:Math.round(Number(amount)*100)});
   };
 
   let busy = false;

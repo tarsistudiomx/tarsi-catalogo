@@ -22,6 +22,7 @@ const orderLabel = (order: Order) => ({
 }[order.status as 'Pendiente de pago'|'Pago por verificar'|'Pagado']) || (order.status === 'En preparación' && order.preparedAt ? 'Preparado' : order.status);
 const exceptional = (order:Order)=>Boolean(order.lastIssue||order.status==='Cancelado'||order.adjustments?.length||
   (awaitingPayment(order)&&order.holdUntil&&Date.parse(order.holdUntil)<=Date.now()));
+const initialTestMode = () => typeof window !== 'undefined' && window.location.hostname.endsWith('.sandbox.floot.app');
 const money = (value: number) => value.toLocaleString('es-MX', {style: 'currency', currency: 'MXN'});
 
 async function request(data: Record<string, unknown>) {
@@ -34,9 +35,9 @@ async function request(data: Record<string, unknown>) {
 }
 
 export function WebOrders({onRevenue, tab, openOrder}: {tab: string; openOrder: (id:string)=>void; onRevenue: (revenue: number, paid: number) => void}) {
-  const [view, setView] = useState<'pending'|'verify'|'paid'|'exceptions'>('pending');
+  const [view, setView] = useState<'pending'|'verify'|'paid'|'exceptions'>('verify');
   const [expanded, setExpanded] = useState<string | null>(null);
-  const [test, setTest] = useState(false);
+  const [test, setTest] = useState(initialTestMode);
   const [matched,setMatched]=useState<Order[]|null>(null);
   const [filters,setFilters]=useState<Record<string,unknown>>({});
   const [orders, setOrders] = useState<Order[]>([]);
@@ -51,7 +52,7 @@ export function WebOrders({onRevenue, tab, openOrder}: {tab: string; openOrder: 
   const cents = /^\d{1,7}(?:[.,]\d{1,2})?$/.test(payment.amount.trim()) ? Math.round(Number(payment.amount.replace(',','.')) * 100) : 0;
   const queue = orders.filter(o => o.queuedAt && ['Pagado','En preparación'].includes(o.status))
     .sort((a,b) => (a.queuedAt || '').localeCompare(b.queuedAt || '') || a.id.localeCompare(b.id));
-  const pending = orders.filter(awaitingPayment);
+  const pending = orders.filter(order => order.status === 'Pago por verificar');
   const dispatching = orders.filter(order => order.status === 'Enviado');
   const list=matched??orders;
   const unreported=list.filter(order=>order.status==='Pendiente de pago');
@@ -76,12 +77,26 @@ export function WebOrders({onRevenue, tab, openOrder}: {tab: string; openOrder: 
   }
 
   useEffect(() => {
+    if (busy) return;
     let active = true;
-    request({action: 'list', test: false}).then(result => {
-      if (active) { setOrders(result.orders); onRevenue(result.revenue, result.paid); }
-    }).catch(error => { if (active) setStatus(error.message); });
-    return () => {active = false;};
-  }, [onRevenue]);
+    async function refresh() {
+      if (!active || document.hidden) return;
+      try {
+        const result = await request({action:'list',test});
+        if (!active) return;
+        setOrders(result.orders); onRevenue(result.revenue,result.paid);
+        if (Object.keys(filters).length) {
+          const searched = await request({action:'list',test,...filters});
+          if (active) setMatched(searched.orders);
+        }
+      } catch (error) {
+        if (active) setStatus(error instanceof Error ? error.message : 'No pudimos actualizar los pedidos.');
+      }
+    }
+    void refresh();
+    window.addEventListener('focus',refresh);
+    return () => { active=false; window.removeEventListener('focus',refresh); };
+  }, [test,onRevenue,busy,filters]);
 
   async function run(operation: () => Promise<void>) {
     setBusy(true);
@@ -117,7 +132,7 @@ export function WebOrders({onRevenue, tab, openOrder}: {tab: string; openOrder: 
       <button type="button" className={styles.rowButton} aria-expanded={isOpen} aria-controls={detailsId}
         onClick={() => setExpanded(isOpen ? null : order.id)}>
         <span className={styles.customer}><strong>{order.details.customer.name}</strong>
-          <time dateTime={order.createdAt}>{new Date(order.createdAt).toLocaleDateString('es-MX',{day:'numeric',month:'short',year:'numeric'})}</time></span>
+          <small>{order.number}</small><time dateTime={order.createdAt}>{new Date(order.createdAt).toLocaleDateString('es-MX',{day:'numeric',month:'short',year:'numeric'})}</time></span>
         <span className={styles.amount}>{money(order.details.total)}</span>
         <span className={styles.badge} data-status={orderLabel(order)}>{orderLabel(order)}</span>
         <span className={styles.chevron} aria-hidden="true">{isOpen ? '−' : '+'}</span>
@@ -133,14 +148,14 @@ export function WebOrders({onRevenue, tab, openOrder}: {tab: string; openOrder: 
       <div className={styles.actions}>
       {order.lastIssue&&<p><strong>Revisión:</strong> {order.lastIssue}</p>}
       {order.holdUntil&&awaitingPayment(order)&&<p>Reserva {Date.parse(order.holdUntil)<=Date.now()?'vencida':'hasta '+new Date(order.holdUntil).toLocaleString('es-MX')}</p>}
-      {order.transferReport&&<p><strong>Reporte del cliente:</strong> {order.transferReport.bank} · {order.transferReport.date} · {money(order.transferReport.cents/100)}
+      {order.transferReport&&<p className={styles.report}><strong>Transferencia reportada:</strong> {order.transferReport.bank} · {order.transferReport.date} · {money(order.transferReport.cents/100)}
         {order.transferReport.reference?' · '+order.transferReport.reference:''}{order.transferReport.details?' · '+order.transferReport.details:''}</p>}
       {order.tracking && <p>Guía {order.tracking}</p>}
       {order.paymentReference && <p>Referencia verificada: {order.paymentReference}{order.paymentNote && ' · '+order.paymentNote}</p>}
       {['Pendiente de pago','Pago por verificar'].includes(order.status) && <Button disabled={busy} onClick={() => {
         setPaymentOrder(order); setPayment({reference:order.transferReport?.reference || '',amount:'',verified:false,note:''});
         setStatus(''); dialog.current?.showModal();
-      }}>CONFIRMAR PAGO</Button>}
+      }}>{order.status === 'Pago por verificar' ? 'REVISAR Y CONFIRMAR EN NU' : 'CONFIRMAR PAGO'}</Button>}
       {order.preparedAt && order.status === 'En preparación' && order.details.delivery === 'Envío nacional' && <>
         <Input aria-label="Paquetería" placeholder="Paquetería" value={dispatch[order.id]?.carrier || ''} onChange={event =>
           setDispatch({...dispatch,[order.id]:{...dispatch[order.id],carrier:event.target.value}})}/>
@@ -208,8 +223,8 @@ export function WebOrders({onRevenue, tab, openOrder}: {tab: string; openOrder: 
   return <section className={styles.root} hidden={!['pedidos','hoy'].includes(tab)}>
     {tab === 'hoy' && <section className={styles.work}><h3>Mis actividades · Pedidos</h3>
       {test && <p>Pedidos de prueba · excluidos de ventas</p>}
-      {pending.length > 0 && <article><h4>Cobrar o verificar pago ({pending.length})</h4>
-        <ul>{pending.map(order => <li key={order.id}><button type="button" onClick={()=>jump(order)}>{order.details.customer.name} · {money(order.details.total)}</button> · {order.status}</li>)}</ul>
+      {pending.length > 0 && <article><h4>Transferencias por verificar ({pending.length})</h4>
+        <ul>{pending.map(order => <li key={order.id}><button type="button" onClick={()=>jump(order)}>{order.details.customer.name} · {money(order.details.total)}</button> · {orderLabel(order)}</li>)}</ul>
       </article>}
       {queue.map(work)}
       {dispatching.length > 0 && <article><h4>Dar seguimiento a la entrega ({dispatching.length})</h4>
@@ -225,13 +240,16 @@ export function WebOrders({onRevenue, tab, openOrder}: {tab: string; openOrder: 
           <Button variant="outline" disabled={busy} onClick={() => void run(async () => {
             await load(!test);
             setTest(!test);
-            setView('pending');
+            setView('verify');
             setFilters({});setMatched(null);
             setExpanded(null);
           })}>{test ? 'Ver pedidos reales' : 'Ver pedidos de prueba'}</Button>
           <Button variant="outline" disabled={busy} onClick={() => void run(() => load(test))}>Actualizar</Button>
         </div>
       </div>
+      {test && <p className={styles.environment}>Modo de prueba · Estos pedidos no cuentan como ventas.</p>}
+      <p className={styles.workflow}><strong>1. Sin reporte</strong><span aria-hidden="true">→</span>
+        <strong>2. Por verificar en Nu</strong><span aria-hidden="true">→</span><strong>3. Confirmado y a preparación</strong></p>
       <details className={styles.settings}><summary>Buscar o filtrar pedidos</summary>
         <form className={styles.adjustment} onSubmit={e=>{
           e.preventDefault();
@@ -239,7 +257,7 @@ export function WebOrders({onRevenue, tab, openOrder}: {tab: string; openOrder: 
           const next:Record<string,unknown>={};
           for(const key of ['search','from','to','status'])if(String(f.get(key)||'').trim())next[key]=String(f.get(key)).trim();
           if(f.get('amount'))next.amount=Number(f.get('amount'));
-          void run(async()=>{const result=await request({action:'list',test,...next});setFilters(next);setMatched(result.orders);});
+          void run(async()=>{const result=await request({action:'list',test,...next});setFilters(next);setMatched(result.orders);if(result.orders.length===1){const order=result.orders[0] as Order;setView(order.status==='Pago por verificar'?'verify':order.status==='Pendiente de pago'?'pending':order.status==='Cancelado'?'exceptions':'paid');setExpanded(order.id);}});
         }}>
           <label>Folio o cliente<Input name="search" maxLength={100}/></label>
           <label>Desde<Input type="date" name="from"/></label><label>Hasta<Input type="date" name="to"/></label>
@@ -253,9 +271,10 @@ export function WebOrders({onRevenue, tab, openOrder}: {tab: string; openOrder: 
       <div className={styles.filters} role="group" aria-label="Bandeja de pedidos">
         {([['pending','Solicitudes sin reporte',unreported],['verify','Pagos por verificar',review],['paid','Pedidos confirmados',confirmed],
           ['exceptions','Historial y excepciones',exceptions]] as const).map(([key,label,rows])=>
-          <button type="button" key={key} aria-pressed={view===key} onClick={()=>setView(key)}>{label} <span>{rows.length}</span></button>)}
+          <button type="button" key={key} data-stage={key} aria-pressed={view===key} onClick={()=>setView(key)}>{label} <span>{rows.length}</span></button>)}
       </div>
-      {(status || busy || test) && <p className={styles.status} role="status">{status || (busy ? 'Cargando…' : 'Pedidos de prueba · excluidos de ventas')}</p>}
+      {(status || busy) && <p className={styles.status} role="status">{status || 'Cargando…'}</p>}
+      {view==='verify' && <p>Comprueba el depósito en Nu antes de pasar el pedido a preparación.</p>}
       {visible.length > 0 ? <div className={styles.list}>
         <div className={styles.columns} aria-hidden="true"><span>Cliente</span><span>Total</span><span>Estado</span><span /></div>
         {visible.map(orderRow)}

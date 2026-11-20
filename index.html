@@ -22,7 +22,7 @@
 .shipping-panel button:disabled{opacity:.55;cursor:wait}
 #shippingStatus{font-size:13px;margin-top:13px;line-height:1.5}
 .actions .email-action{display:grid;place-items:center;text-align:center;text-decoration:none;border:1px solid var(--ink);border-radius:12px;padding:15px 10px;font-size:12px;font-weight:900}#orderActions h3,#orderConfirmation h3{color:var(--green);margin:20px 0 8px}#proofInstagram{text-decoration:none;text-align:center;align-content:center}#proofInstagram[hidden]{display:none}#submitOrder:disabled{opacity:.65}#orderReceipt{overflow-wrap:anywhere}#bankDetails dd{margin:0 0 8px;overflow-wrap:anywhere}
-.tarsi-dialog{background:var(--bone);color:var(--ink);width:min(92vw,520px);max-height:88dvh;overflow:auto;border:1px solid var(--ink);border-radius:18px;padding:20px;overflow-wrap:anywhere}.tarsi-dialog::backdrop{background:#19181599}.tarsi-dialog .actions a{text-align:center}.tarsi-dialog > form[method="dialog"]{text-align:right}.tarsi-dialog form[hidden]{display:none}.tarsi-dialog .checkout{margin-top:14px}.tarsi-dialog > button[hidden]{display:none}.tarsi-dialog > button:not([hidden]){margin:5px 0}</style></head><body>
+.tarsi-dialog{background:var(--bone);color:var(--ink);width:min(92vw,520px);max-height:88dvh;overflow:auto;border:1px solid var(--ink);border-radius:18px;padding:20px;overflow-wrap:anywhere}.tarsi-dialog::backdrop{background:#19181599}.tarsi-dialog .actions a{text-align:center}.tarsi-dialog > form[method="dialog"]{text-align:right}.tarsi-dialog form[hidden]{display:none}.tarsi-dialog .checkout{margin-top:14px}.tarsi-dialog > button[hidden]{display:none}.tarsi-dialog > button:not([hidden]){margin:5px 0}#proofOptions{border:1px solid var(--green);border-radius:14px;background:#fcf8f2;padding:12px;margin:12px 0}#proofOptions h4,#transferDetails h4{margin:0 0 8px}#proofOptions p{margin:8px 0}#proofEmailDetails{border-top:1px solid #d6cbbd;margin-top:12px;padding-top:4px}#proofEmailDetails[hidden],#legacyReceiptActions[hidden]{display:none}#receiptSummary{margin:16px 0}#receiptSummary summary{cursor:pointer;font-weight:700}#bankDetails{display:grid;grid-template-columns:max-content 1fr;gap:8px 14px}#bankDetails dt{font-weight:700}#bankDetails dd{margin:0}</style></head><body>
 <header><a href="#inicio" aria-label="Inicio TARSI"><img class="logo" src="assets/logo-original.png" alt="TARSI"></a><nav><a href="#catalogo">VER PLAYERAS</a><button class="pill" id="navCart">CARRITO (0)</button></nav></header>
 <main><section class="hero" id="inicio"><div class="hero-content"><div class="eyebrow">TARSI® / COLECCIÓN 2026</div><h1>USA LO<br>QUE <span>AMAS.</span></h1><p>Tu mundo, tu diseño, tu estilo.</p><a class="cta" href="#catalogo">EXPLORAR COLECCIÓN</a></div><div class="hero-stamp">WEAR WHAT YOU LOVE. / TARSI®</div></section>
 <div class="ticker">1 PLAYERA $399 &nbsp; · &nbsp; 2 PLAYERAS $699 &nbsp; · &nbsp; 3 PLAYERAS $999</div>
@@ -48,27 +48,41 @@
 <dialog id="orderConfirmation" class="tarsi-dialog" aria-labelledby="orderReceived">
 <form method="dialog"><button class="pill">Cerrar</button></form>
 <h3 id="orderReceived">¡TU PEDIDO FUE RECIBIDO!</h3>
-<p>Tu pedido ya está registrado en TARSI. Ahora solo falta realizar tu transferencia.</p>
-<div class="totals" id="orderReceipt"></div>
+<p id="orderIntro"></p>
+<p id="previewPaymentNotice" hidden><strong>Modo de prueba. No realices una transferencia.</strong></p>
+<section id="proofOptions" aria-labelledby="proofTitle" hidden>
+  <h4 id="proofTitle" tabindex="-1">2. ENVÍA TU COMPROBANTE</h4>
+  <p>Adjunta una captura de tu transferencia por Instagram o correo. Incluye tu folio <strong id="proofNumber"></strong> para que TARSI encuentre tu pedido.</p>
+  <div class="actions"><a class="pill" id="proofInstagram" href="https://www.instagram.com/tarsi.mx/" target="_blank" rel="noopener noreferrer">COMPROBANTE POR INSTAGRAM</a><button id="proofEmail" type="button" aria-expanded="false" aria-controls="proofEmailDetails">COMPROBANTE POR CORREO</button></div>
+  <div id="proofEmailDetails" hidden>
+    <p>Envía un correo a <strong>tarsi.studiomx@gmail.com</strong> y adjunta tu comprobante.</p>
+    <p>Asunto: <strong id="proofSubject"></strong></p>
+    <div class="actions"><button id="copyProofAddress" type="button">COPIAR CORREO</button><button id="copyProofSubject" type="button">COPIAR ASUNTO</button></div>
+    <p id="proofCopyStatus" role="status"></p>
+  </div>
+</section>
 <div id="transferDetails" hidden>
-<h4>01 / REALIZA TU TRANSFERENCIA</h4><dl id="bankDetails"></dl>
+<h4>1. REALIZA TU TRANSFERENCIA</h4><dl id="bankDetails"></dl>
 <div class="actions"><button id="copyClabe">COPIAR CLABE</button><button id="copyConcept">COPIAR CONCEPTO</button><button id="copyAmount">COPIAR IMPORTE</button></div>
-<p><strong>IMPORTANTE:</strong> Después de realizar tu transferencia, regresa a esta página y registra los datos de tu pago. También te enviaremos un enlace a tu correo para que puedas continuar más tarde.</p>
+
 </div>
 <p id="holdStatus" role="status" hidden></p>
 <button class="pill" id="renewReservation" hidden>TODAVÍA NO HE PAGADO · RENOVAR RESERVA</button>
-<button class="pill" id="openReport" hidden>YA REALICÉ MI TRANSFERENCIA</button>
+<button class="pill" id="openReport" hidden>YA TRANSFERÍ · ENVIAR COMPROBANTE</button>
 <form id="transferReport" class="checkout" hidden>
+  <p class="wide">Dinos cómo identificar tu transferencia. Después podrás enviar el comprobante por Instagram o correo.</p>
   <label>Banco de origen<input name="bank" required minlength="2" maxlength="80"></label>
   <label>Clave de rastreo SPEI, si aplica<input name="reference" maxlength="45"></label>
   <label>Fecha de transferencia<input name="date" type="date" required></label>
   <label>Importe transferido (MXN)<input name="amount" inputmode="decimal" required></label>
   <label class="wide">Información para localizar el depósito<input name="details" maxlength="350" placeholder="Ej. concepto que escribiste al pagar"></label>
-  <button class="pill wide" type="submit">ENVIAR REPORTE</button>
+  <p id="transferReportStatus" class="wide" role="status"></p>
+  <button class="pill wide" type="submit">CONTINUAR A COMPROBANTE</button>
 </form>
 <p id="transferPending" hidden>Contacta a TARSI para obtener los datos oficiales de transferencia antes de pagar.</p>
-<div class="actions"><a class="pill" id="proofInstagram" href="https://www.instagram.com/tarsi.mx/" target="_blank" rel="noopener noreferrer">IR AL INSTAGRAM DE TARSI</a><button id="copyOrderNumber">COPIAR NÚMERO DE PEDIDO</button></div>
-<div class="actions"><button id="shareReceipt">COMPARTIR RESUMEN</button><button id="emailReceipt">ENVIAR POR CORREO</button></div>
+<details id="receiptSummary"><summary>Ver resumen del pedido</summary><div class="totals" id="orderReceipt"></div></details>
+<div class="actions"><button id="copyOrderNumber">COPIAR FOLIO</button></div>
+<div class="actions" id="legacyReceiptActions"><button id="shareReceipt">COMPARTIR RESUMEN</button><button id="emailReceipt">ENVIAR POR CORREO</button></div>
 <p id="notificationStatus" role="status"></p>
 </dialog>
 <dialog id="shareDialog" class="tarsi-dialog" aria-labelledby="shareTitle">
