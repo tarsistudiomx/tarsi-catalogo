@@ -1,0 +1,19 @@
+name: TARSI preview worker check
+on:
+  push:
+    branches: [qa/tarsi-recordatorio-sandbox]
+permissions: {}
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    steps:
+      - name: Process the isolated preview outbox
+        env:
+          WORKER: ${{ secrets.TARSI_PREVIEW_SMOKE_KEY }}
+        run: |
+          set -eu
+          test -n "$WORKER"
+          curl --fail --silent --show-error --max-time 30 \
+            -H "Authorization: Bearer $WORKER" -H "Content-Type: application/json" --data '{}' \
+            https://87615c19-5c95-461f-b331-944107b3c509.sandbox.floot.app/_api/tarsi_mail_worker
