@@ -47,6 +47,39 @@ test('The new preview forwards reports, renewals, quotes and checkout to Floot w
   assert.equal(unpack(await submit({env:{},fetcher})(event('POST',{body:{}}))).status, 400);
 });
 
+test('Preview integration can be read from a private deploy-scoped Blob', async t => {
+  const previewUrl = 'https://deploy-preview-7--tarsi-skydropx.netlify.app';
+  const origin = 'https://a5112529-9f7b-46bf-b94b-3a7cc76b3b15.sandbox.floot.app';
+  const key = 'synthetic-preview-blob-key-at-least-32';
+  const envKeys = ['TARSI_PREVIEW_STOREFRONT_KEY', 'TARSI_FLOOT_PREVIEW_ORIGIN', 'NETLIFY_BLOBS_CONTEXT'];
+  const previous = Object.fromEntries(envKeys.map(name => [name, process.env[name]]));
+  for (const name of envKeys) delete process.env[name];
+  t.after(() => {
+    for (const [name, value] of Object.entries(previous)) {
+      if (value === undefined) delete process.env[name];
+      else process.env[name] = value;
+    }
+  });
+  const mock = t.mock.method(globalThis, 'fetch', async (url, options) => {
+    assert.match(String(url), /blobs\.example\/region:us-east-1\/fixture-site\/deploy:0123456789abcdef01234567.*\/tarsi-preview-integration/);
+    assert.equal(options.headers.authorization, 'Bearer fixture-blob-token');
+    return Response.json({origin, key});
+  });
+  const handler = submit({env: {}, fetcher: async (url, options) => {
+    assert.equal(url, origin + '/_api/tarsi_preview_checkout_v2');
+    assert.equal(options.headers.Authorization, 'Bearer ' + key);
+    assert.deepEqual(JSON.parse(options.body), {recover: true, mode: 'recover'});
+    return Response.json({number:'TARSI-000001'});
+  }});
+  const response = await handler({
+    ...event('POST', {body:{recover:true},headers:{'x-nf-site-id':'fixture-site','x-nf-deploy-id':'0123456789abcdef01234567'}}),
+    rawUrl: previewUrl + '/.netlify/functions/submit-order',
+    blobs: Buffer.from(JSON.stringify({url:'https://blobs.example',token:'fixture-blob-token'})).toString('base64')
+  });
+  assert.deepEqual(unpack(response),{status:200,data:{number:'TARSI-000001'}});
+  assert.equal(mock.mock.callCount(),1);
+});
+
 test('Published checkout routes to Floot while the carrier endpoint stays independent', async t => {
   const key = 'synthetic-live-auth-key-at-least-32';
   const previous = process.env.TARSI_STOREFRONT_KEY;

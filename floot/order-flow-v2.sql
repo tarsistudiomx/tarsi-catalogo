@@ -66,11 +66,13 @@ CREATE TABLE IF NOT EXISTS tarsi_mail_outbox (
   attempts integer NOT NULL DEFAULT 0 CHECK(attempts BETWEEN 0 AND 5),
   state text NOT NULL DEFAULT 'pending' CHECK(state IN ('pending','sending','accepted','suppressed','review','failed')),
   claimed_at timestamptz,
+  claim_id uuid,
   accepted_at timestamptz,
   provider_id text,
   last_error text,
   PRIMARY KEY(order_id,kind)
 );
+ALTER TABLE tarsi_mail_outbox ADD COLUMN IF NOT EXISTS claim_id uuid;
 CREATE INDEX IF NOT EXISTS tarsi_mail_due_idx ON tarsi_mail_outbox(due_at) WHERE state='pending';
 
 -- Caller locks the order row before allocating or renewing.

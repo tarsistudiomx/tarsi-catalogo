@@ -270,7 +270,7 @@ test('Checkout móvil v2: enlace en otro contexto, reserva vencida y reporte tar
   } finally { await page.close(); }
 });
 
-test('Navegador y sandbox Floot v2: entrega local, aviso y ventana bancaria', {
+test('Navegador y sandbox Floot v2: entrega local, folio, ventana bancaria y reporte', {
   skip: process.env.TARSI_TEST_FLOOT_V2 !== '1'
 }, async () => {
   const {createHandler: orderHandler} = require('../netlify/functions/submit-order');
@@ -280,6 +280,11 @@ test('Navegador y sandbox Floot v2: entrega local, aviso y ventana bancaria', {
     await page.route('**/.netlify/functions/submit-order', async route => {
       const source = event('POST', {body: route.request().postData()});
       source.rawUrl = 'https://deploy-preview-7--tarsi-skydropx.netlify.app/.netlify/functions/submit-order';
+      if (process.env.TARSI_TEST_NETLIFY_BLOBS_CONTEXT_FILE) {
+        const {siteID,deployID,token}=JSON.parse(await readFile(process.env.TARSI_TEST_NETLIFY_BLOBS_CONTEXT_FILE,'utf8'));
+        const {setEnvironmentContext}=require('@netlify/blobs');
+        setEnvironmentContext({siteID,deployID,token});
+      }
       const response = await submit(source);
       await route.fulfill({status: response.statusCode, headers: response.headers, body: response.body});
     });
@@ -294,14 +299,20 @@ test('Navegador y sandbox Floot v2: entrega local, aviso y ventana bancaria', {
     await page.waitForFunction(() => !document.querySelector('#neighborhood').disabled);
     await page.fill('#neighborhood', 'Plazas del Sol 2a Sección');
     await page.fill('#street', 'Calle de prueba 123');
-    await page.click('#emailOrder');
+    await page.click('#submitOrder');
     await waitText(page, '#orderConfirmation', '¡TU PEDIDO FUE RECIBIDO!');
     await waitText(page, '#orderReceipt', 'Por cotizar el día de la entrega');
     await waitText(page, '#transferDetails', '$399 MXN');
-    await waitText(page, '#notificationStatus', 'aceptó la notificación');
     const number = (await page.locator('#orderReceipt').innerText()).match(/TARSI-\d{6,}/)?.[0];
     assert.ok(number);
-    console.log('Pedido real de prueba registrado:', number);
+    await page.click('#openReport');
+    await page.locator('[name="bank"]').fill('Banco ficticio');
+    await page.locator('[name="reference"]').fill('QABROWSER'+require('node:crypto').randomUUID().replaceAll('-',''));
+    await page.locator('[name="date"]').fill(new Intl.DateTimeFormat('en-CA',{timeZone:'America/Mexico_City',year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date()));
+    await page.locator('[name="amount"]').fill('399');
+    await page.click('#transferReport button[type="submit"]');
+    await waitText(page,'#orderConfirmation','¡Recibimos tu reporte de transferencia!');
+    console.log('Pedido sintético registrado y reportado:', number);
   } finally {
     await page.close();
   }

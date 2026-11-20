@@ -23,7 +23,7 @@ async function flootCheckout(body, mode, deployment, fetcher = fetch) {
     if (deployment === 'preview') {
       let configuredOrigin = process.env.TARSI_FLOOT_PREVIEW_ORIGIN;
       if (!configuredOrigin || !(key?.length >= 32)) {
-        const config = await getDeployStore({consistency:'strong'}).get('tarsi-preview-integration', {type:'json'});
+        const config = await getDeployStore({region:'us-east-1'}).get('tarsi-preview-integration', {type:'json'});
         configuredOrigin = config?.origin;
         key = config?.key;
       }

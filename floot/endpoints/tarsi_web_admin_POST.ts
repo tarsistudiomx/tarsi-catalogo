@@ -83,7 +83,7 @@ export async function handle(request: Request) {
         AND (revoked_at IS NOT NULL OR recover_until<=now()) RETURNING order_id`.execute(trx);
       if(!changed.rows.length) return {error:'El enlace existente todavía está activo.',status:409};
       await sql`INSERT INTO tarsi_mail_outbox(order_id,kind,due_at) VALUES(${orderId}::uuid,'recovery',now())
-        ON CONFLICT(order_id,kind) DO UPDATE SET due_at=now(),state='pending',attempts=0,claimed_at=NULL,
+        ON CONFLICT(order_id,kind) DO UPDATE SET due_at=now(),state='pending',attempts=0,claimed_at=NULL,claim_id=NULL,
           accepted_at=NULL,provider_id=NULL,last_error=NULL`.execute(trx);
       await history('Enlace de recuperación reemitido');
       return null;

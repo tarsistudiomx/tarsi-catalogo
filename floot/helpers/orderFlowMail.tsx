@@ -9,16 +9,17 @@ import type {payload} from '../endpoints/tarsi_web_order_POST.schema';
 const inbox='tarsi.studiomx@gmail.com';
 type Kind='registered'|'reminder'|'reported'|'confirmed'|'recovery';
 type Order=z.infer<typeof payload>;
-type Work={orderId:string;kind:Kind;attempts:number;claimedAt:string};
+type Work={orderId:string;kind:Kind;attempts:number;claimId:string};
 export async function drainOrderMail(isTest:boolean,orderId?:string){
   const env=process.env as Record<string,string|undefined>;
-  const storefront=isTest?(env.TARSI_TEST_STOREFRONT_URL ?? (await previewIntegration())?.storefrontUrl):'https://tarsi-skydropx.netlify.app/';
+  const testConfig=isTest&&!env.TARSI_TEST_STOREFRONT_URL ? await previewIntegration() : undefined;
+  const storefront=isTest?(env.TARSI_TEST_STOREFRONT_URL ?? testConfig?.storefrontUrl):'https://tarsi-skydropx.netlify.app/';
   if(!storefront) return {available:false,processed:0};
   const linkOrigin=new URL(storefront);
   if(linkOrigin.protocol!=='https:'||(isTest&&!/^deploy-preview-\d+--tarsi-skydropx\.netlify\.app$/.test(linkOrigin.hostname)))
     return {available:false,processed:0};
-  const google=await getGoogleAccessToken(db,inbox).catch(()=>null);
-  if(!google)return {available:false,processed:0};
+  const google=testConfig ? null : await getGoogleAccessToken(db,inbox).catch(()=>null);
+  if(!testConfig&&!google)return {available:false,processed:0};
   await sql`UPDATE tarsi_mail_outbox m SET state='review',last_error='Resultado incierto; revisar Enviados.'
     FROM tarsi_web_orders o WHERE o.id=m.order_id AND o.is_test=${isTest} AND m.state='sending'
     AND m.claimed_at<now()-interval '10 minutes'`.execute(db);
@@ -27,8 +28,8 @@ export async function drainOrderMail(isTest:boolean,orderId?:string){
     WHERE o.is_test=${isTest} AND m.state='pending' AND m.due_at<=now()
       ${orderId?sql`AND m.order_id=${orderId}::uuid`:sql``}
     ORDER BY m.due_at LIMIT ${orderId?1:3} FOR UPDATE OF m SKIP LOCKED
-  ) UPDATE tarsi_mail_outbox m SET state='sending',claimed_at=now(),attempts=m.attempts+1
-    FROM next WHERE m.order_id=next.order_id AND m.kind=next.kind RETURNING m.order_id,m.kind,m.attempts,m.claimed_at::text`.execute(db);
+  ) UPDATE tarsi_mail_outbox m SET state='sending',claimed_at=clock_timestamp(),claim_id=gen_random_uuid(),attempts=m.attempts+1
+    FROM next WHERE m.order_id=next.order_id AND m.kind=next.kind RETURNING m.order_id,m.kind,m.attempts,m.claim_id`.execute(db);
   for(const job of claimed.rows){
     await db.transaction().execute(async trx=>{
       const row=(await sql<{number:string;status:string;key:string;payload:string;eligible:boolean;reported:boolean}>`SELECT o.number,o.status,
@@ -37,7 +38,7 @@ export async function drainOrderMail(isTest:boolean,orderId?:string){
         FROM tarsi_web_orders o JOIN tarsi_order_flow f ON f.order_id=o.id LEFT JOIN tarsi_transfer_reports r ON r.order_id=o.id
         WHERE o.id=${job.orderId}::uuid FOR UPDATE OF o`.execute(trx)).rows[0];
       const valid=(await sql`SELECT 1 FROM tarsi_mail_outbox WHERE order_id=${job.orderId}::uuid
-        AND kind=${job.kind} AND claimed_at=${job.claimedAt}::timestamptz AND state='sending' FOR UPDATE`.execute(trx)).rows.length;
+        AND kind=${job.kind} AND claim_id=${job.claimId}::uuid AND state='sending' FOR UPDATE`.execute(trx)).rows.length;
       if(!valid)return;
       const update=(state:string,reason:string|null=null,id:string|null=null)=>sql`UPDATE tarsi_mail_outbox SET
         state=${state},last_error=${reason},provider_id=${id},accepted_at=CASE WHEN ${state}='accepted' THEN now() ELSE NULL END,
@@ -80,6 +81,14 @@ export async function drainOrderMail(isTest:boolean,orderId?:string){
         'MIME-Version: 1.0','Content-Type: text/plain; charset=UTF-8','Content-Transfer-Encoding: base64','',
         Buffer.from(body).toString('base64').match(/.{1,76}/g)?.join('\r\n')||''].join('\r\n')).toString('base64url');
       try{
+        if(testConfig){
+          const {sendEmail}=await import('@floot/email');
+          const result=await sendEmail({from:inbox,to:inbox,subject:'[PRUEBA] '+subject,text:body});
+          if(result.ok) await update('accepted',null,result.messageId);
+          else await update(job.attempts>=5?'failed':'pending','La bandeja de pruebas no aceptó el mensaje.');
+          return;
+        }
+        if(!google){await update('failed','Gmail sin autorización.');return;}
         const response=await fetch('https://gmail.googleapis.com/gmail/v1/users/me/messages/send',{
           method:'POST',redirect:'error',signal:AbortSignal.timeout(4500),
           headers:{Authorization:'Bearer '+google.access_token,'Content-Type':'application/json'},body:JSON.stringify({raw})
