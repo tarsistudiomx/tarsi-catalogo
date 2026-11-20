@@ -87,3 +87,7 @@ En vista previa, los correos quedan en la bandeja de pruebas de Floot. Se verifi
 ### Verificación de Gmail y preparación de producción
 
 Gmail aceptó por su API un correo con asunto `[PRUEBA TARSI] Verificacion de Gmail` enviado desde y hacia el buzón operativo del negocio. La validación se hizo en la vista previa del proyecto principal con su conexión Gmail existente y el endpoint temporal fue retirado. El resultado verificable es aceptación del proveedor. La activación en línea queda condicionada al conteo real de S, M, L, XL y XXL y a la comprobación de la publicación coordinada.
+
+### Programador nativo de Netlify
+
+El archivo `netlify/functions/tarsi-order-clock.mjs` activa el procesador cada cinco minutos en el despliegue publicado. Lee `mailWorkerKey` del mismo Blob privado de ese deploy. Los despliegues previos quedan protegidos. Para evitar dos programadores simultáneos, conservar `TARSI_MAIL_SCHEDULER_ENABLED=false` en GitHub si el control de Netlify está activo. El umbral para procesar recordatorios sigue siendo 20 minutos. Buscar el registro `TARSI_MAIL_SCHEDULE_OK` por deploy para comprobar la llamada automática.
