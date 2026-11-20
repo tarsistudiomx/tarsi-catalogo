@@ -1,5 +1,9 @@
 # Estado actual
 
+## Entrega con folios cortos, reservas y reportes de transferencia
+
+Lee primero [el flujo vigente y la verificación de producción](10-FLUJO-RESERVAS.md). Las notas anteriores se conservan como historial.
+
 La modalidad local en Querétaro cobra solo las prendas; TARSI cotiza el delivery y contacta al cliente cuando esté listo. El remitente para producción es Gmail por OAuth de Floot. El administrador debe autorizar tarsi.studiomx@gmail.com desde Pedidos → Conectar Gmail. Resend conserva su función de pruebas y se confirmó recepción en Gmail.
 
 Rama de tienda: `feat/tarsi-checkout-dashboard`, basada en la actualización de fotos y zoom del PR #4. Floot encontrado como Tarsi — Control de Ventas (66f62c32-15c0-4546-ba6e-bce0efe72d71). No hay tabla de pedidos web previa. Floot no habilita ramas para esta cuenta. Producción sujeta a aprobación.
