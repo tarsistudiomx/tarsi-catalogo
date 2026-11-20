@@ -1,3 +1,4 @@
+import {previewIntegration} from './previewIntegration';
 import {createHash} from 'node:crypto';
 import {getGoogleAccessToken} from '@floot/google-integrations';
 import {sql} from 'kysely';
@@ -11,7 +12,7 @@ type Order=z.infer<typeof payload>;
 type Work={orderId:string;kind:Kind;attempts:number;claimedAt:string};
 export async function drainOrderMail(isTest:boolean,orderId?:string){
   const env=process.env as Record<string,string|undefined>;
-  const storefront=isTest?env.TARSI_TEST_STOREFRONT_URL:'https://tarsi-skydropx.netlify.app/';
+  const storefront=isTest?(env.TARSI_TEST_STOREFRONT_URL ?? (await previewIntegration())?.storefrontUrl):'https://tarsi-skydropx.netlify.app/';
   if(!storefront) return {available:false,processed:0};
   const linkOrigin=new URL(storefront);
   if(linkOrigin.protocol!=='https:'||(isTest&&!/^deploy-preview-\d+--tarsi-skydropx\.netlify\.app$/.test(linkOrigin.hostname)))

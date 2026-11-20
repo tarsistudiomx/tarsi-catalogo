@@ -1,4 +1,5 @@
-import {createCipheriv,createDecipheriv,createHash,createHmac,randomBytes,timingSafeEqual} from 'node:crypto';
+import {matchesBearer,previewIntegration} from './previewIntegration';
+import {createCipheriv,createDecipheriv,createHash,createHmac,randomBytes} from 'node:crypto';
 import {sql} from 'kysely';
 import {db} from './db';
 import {persistWebOrder,StockUnavailable,InventoryNotReady} from './persistWebOrder';
@@ -81,10 +82,10 @@ export async function handleStorefront(request:Request,isTest:boolean, flow=fals
     const marker = isTest ? 'checkout-v1' : 'storefront-v1';
     if (request.headers.get(isTest ? 'x-tarsi-preview' : 'x-tarsi-storefront') !== marker) return json({error:'Solicitud no válida.'},403);
     if(flow){
-      const key=isTest?process.env.TARSI_PREVIEW_STOREFRONT_KEY:process.env.TARSI_STOREFRONT_KEY;
-      const authorization=request.headers.get('authorization')||'';
-      const digest=(value:string)=>createHash('sha256').update(value).digest();
-      if(!key||key.length<32||!timingSafeEqual(digest('Bearer '+key),digest(authorization)))
+      const env=process.env as Record<string,string|undefined>;
+      const key=isTest?env.TARSI_PREVIEW_STOREFRONT_KEY:env.TARSI_STOREFRONT_KEY;
+      const testConfig=isTest&&!key ? await previewIntegration() : undefined;
+      if(!matchesBearer(request.headers.get('authorization')||'',key,testConfig?.storefrontAuthSha256))
         return json({error:'Solicitud no válida.'},403);
     }
     const table = sql.table(isTest ? 'tarsi_preview_checkout_config' : 'tarsi_live_checkout_config');

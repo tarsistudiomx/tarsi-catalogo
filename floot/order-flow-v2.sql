@@ -1,5 +1,11 @@
 BEGIN;
 CREATE SEQUENCE IF NOT EXISTS tarsi_short_order_seq AS bigint START 1 NO CYCLE;
+CREATE TABLE IF NOT EXISTS tarsi_preview_integration (
+  slot boolean PRIMARY KEY DEFAULT true CHECK (slot),
+  storefront_auth_sha256 text NOT NULL CHECK (storefront_auth_sha256 ~ '^[a-f0-9]{64}$'),
+  mail_auth_sha256 text NOT NULL CHECK (mail_auth_sha256 ~ '^[a-f0-9]{64}$'),
+  storefront_url text NOT NULL
+);
 CREATE TABLE IF NOT EXISTS tarsi_order_flow (
   order_id uuid PRIMARY KEY REFERENCES tarsi_web_orders(id),
   recovery_key uuid NOT NULL UNIQUE,
