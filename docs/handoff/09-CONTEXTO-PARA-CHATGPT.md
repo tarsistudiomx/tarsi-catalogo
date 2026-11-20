@@ -1,5 +1,9 @@
 # Contexto para ChatGPT
 
+## Entrega con folios cortos, reservas y reportes de transferencia
+
+Lee primero [el flujo vigente y la verificación de producción](10-FLUJO-RESERVAS.md). Las notas anteriores se conservan como historial.
+
 La modalidad local en Querétaro cobra solo las prendas; TARSI cotiza el delivery y contacta al cliente cuando esté listo. El remitente para producción es Gmail por OAuth de Floot. El administrador debe autorizar tarsi.studiomx@gmail.com desde Pedidos → Conectar Gmail. Resend conserva su función de pruebas y se confirmó recepción en Gmail.
 
 Continúa TARSI sin reconstruir la tienda. Repositorio `https://github.com/tarsistudiomx/tarsi-catalogo`, producción en `main`, rama de trabajo `feat/tarsi-checkout-dashboard`. Obtén el último commit con `git log -1 --oneline` y consulta [estado](01-ESTADO-ACTUAL.md). El proyecto Netlify es `tarsi-skydropx`. El proyecto Floot real es Tarsi — Control de Ventas, ID `66f62c32-15c0-4546-ba6e-bce0efe72d71`. Floot no tiene ramas en esta cuenta; revisar el editor y no publicar antes de autorización.

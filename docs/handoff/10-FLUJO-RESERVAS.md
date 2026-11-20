@@ -1,6 +1,15 @@
 # Solicitudes de compra, reservas y transferencias
 
-Rama `feat/tarsi-reservas-y-pagos`, base `66db94c`. Actualización del 19 de noviembre de 2026. Este documento prevalece sobre instrucciones de publicación de entregas anteriores. El cambio requiere aprobación explícita para producción.
+Implementación original en `feat/tarsi-reservas-y-pagos`, base `66db94c`. Este documento prevalece sobre instrucciones de publicación de entregas anteriores.
+
+## Verificación de producción del 20 de noviembre de 2026
+
+- [Tienda pública](https://tarsi-skydropx.netlify.app/). Netlify confirmó el deploy git de producción `6b007a9ee9249906c48a3c35`, commit `21c5f903fe22863e2f26eaa9dc9cff35393fa7ef`. Verificado en su URL pública el acceso al endpoint de Floot, una recuperación inexistente, los controles de recuperación y comprobante, y una cotización real de $180 MXN hacia CP 01000 para una prenda. No se creó ningún pedido de prueba en producción.
+- [Dashboard publicado](https://tarsi-control-ventas.floot.app/), release Floot `1795192082584bd094116-7df3-4fa0-a638-68cb3d3ff11d`. Se aplicó la migración aditiva y se comprobó la configuración segura. Stock inicial registrado: S 4, M 6, L 4, XL 2 y XXL 0 (sin unidades declaradas). El umbral de alerta de stock bajo es 1. El typecheck de Floot pasó.
+- Pasaron 21 pruebas de Node que incluyen concurrencia PostgreSQL. El checkout se probó en Chromium y WebKit emulado, con pedidos sintéticos en Floot. [La ejecución de prueba](https://github.com/tarsistudiomx/tarsi-catalogo/actions/runs/44772747137) dejó el recordatorio de `TARSI-000009` aceptado una sola vez en la bandeja aislada. Gmail aceptó aparte el correo de diagnóstico dirigido al buzón operativo. Estas comprobaciones no acreditan entrega a la bandeja de un cliente.
+- Netlify ejecutó `tarsi-order-clock` automáticamente a las 16:57 UTC. Floot registró la llamada a `tarsi_mail_worker` a las 16:57:07 UTC y su finalización. El request de Floot fue `0c05ff62-7b7f-47b6-a4b0-ce505ff3d868`. La evidencia de un recordatorio aceptado proviene del pedido de prueba aislado, porque no se insertaron pedidos sintéticos en producción.
+- Configuración vigente para futuros despliegues de la tienda: producir un candidato Git con contexto `production`, configurar el Blob privado `tarsi-live-integration` de ese deploy en región `us-east-1` con los campos `key` y `mailWorkerKey`, probar Floot y Skydropx, y solo entonces promover y fijar el deploy. Un borrador manual perdió el contexto de Skydropx y se revirtió. La tienda quedó fijada para impedir que un deploy sin estas credenciales reemplace la versión verificada.
+- Reversión: restaurar primero el deploy anterior `6afea11c208c66a97c07de51` si falla el checkout. El checkpoint anterior de Floot es `300df90f-d83d-440d-8d8b-16ec97819a46`. Conservar la migración aditiva y los pedidos ya registrados. Si la reversión dura más que una comprobación breve, coordinar un programador autorizado para seguir procesando el correo pendiente. El programador de GitHub está desactivado.
 
 ## Auditoría y alcance
 
@@ -31,7 +40,7 @@ El enlace usa un identificador UUID v4 aleatorio en el fragmento de la URL con e
 
 ## Correo y operación
 
-El alta encola el correo inicial y un recordatorio con vencimiento de 20 minutos. El procesador revisa el estado al enviar y suprime recordatorios de pedidos reportados, verificados, cancelados o revocados. El worker de GitHub Actions revisa aproximadamente cada cinco minutos y el servicio puede iniciar tarde; el recordatorio no se garantiza en el segundo exacto. Una recuperación tras una caída no depende de que el navegador quede abierto. La confirmación encola su propio correo y también intenta el envío inmediato. El outbox registra aceptación de Gmail, reintentos de fallos identificables y revisión si el resultado fue incierto. Para un resultado incierto, buscar el `Message-ID` en Enviados antes de decidir un reintento. Aceptación de Gmail no acredita entrega al destinatario.
+El alta encola el correo inicial y un recordatorio con vencimiento de 20 minutos. El procesador revisa el estado al enviar y suprime recordatorios de pedidos reportados, verificados, cancelados o revocados. El programador de Netlify revisa aproximadamente cada cinco minutos. El recordatorio queda listo para el siguiente ciclo después de cumplir los 20 minutos. Una recuperación tras una caída no depende de que el navegador quede abierto. La confirmación encola su propio correo y también intenta el envío inmediato. El outbox registra aceptación de Gmail, reintentos de fallos identificables y revisión si el resultado fue incierto. Para un resultado incierto, buscar el `Message-ID` en Enviados antes de decidir un reintento. Aceptación de Gmail no acredita entrega al destinatario.
 
 - Netlify, únicamente para el Deploy Preview #7, usa el Blob privado `tarsi-preview-integration` (campos `origin` y `key`) en el store de cada deploy, región `us-east-1`. Cada rebuild crea un deploy nuevo y requiere cargar ese Blob de nuevo. El plan gratuito rechazó el alcance Functions exclusivo para una variable marcada como secreta. El ámbito por deploy evita inyectar la clave en producción. Si el plan permite variables seguras del servidor, siguen disponibles `TARSI_FLOOT_PREVIEW_ORIGIN` y `TARSI_PREVIEW_STOREFRONT_KEY`.
 - Rama Floot: `JWT_SECRET` de Floot. La fila de `tarsi_preview_integration` guarda solo las huellas SHA-256 de los encabezados de autorización y la URL del PR. El correo de la rama aislada se captura en la bandeja de prueba de Floot. El Gmail de producción permanece separado y depende del OAuth de `tarsi.studiomx@gmail.com` con permiso de envío.
@@ -86,7 +95,7 @@ En vista previa, los correos quedan en la bandeja de pruebas de Floot. Se verifi
 
 ### Verificación de Gmail y preparación de producción
 
-Gmail aceptó por su API un correo con asunto `[PRUEBA TARSI] Verificacion de Gmail` enviado desde y hacia el buzón operativo del negocio. La validación se hizo en la vista previa del proyecto principal con su conexión Gmail existente y el endpoint temporal fue retirado. El resultado verificable es aceptación del proveedor. La activación en línea queda condicionada al conteo real de S, M, L, XL y XXL y a la comprobación de la publicación coordinada.
+Gmail aceptó por su API un correo con asunto `[PRUEBA TARSI] Verificacion de Gmail` enviado desde y hacia el buzón operativo del negocio. La validación se hizo en la vista previa del proyecto principal con su conexión Gmail existente y el endpoint temporal fue retirado. El resultado verificable es aceptación del proveedor. La comprobación de la publicación y el conteo registrado están en la primera sección.
 
 ### Programador nativo de Netlify
 
