@@ -311,6 +311,7 @@ test('Navegador y sandbox Floot v2: entrega local, folio, ventana bancaria y rep
     await page.fill('#street', 'Calle de prueba 123');
     await page.click('#submitOrder');
     await waitText(page, '#orderConfirmation', '¡TU PEDIDO FUE RECIBIDO!');
+    await page.click('#receiptSummary summary');
     await waitText(page, '#orderReceipt', 'Por cotizar el día de la entrega');
     await waitText(page, '#transferDetails', '$399 MXN');
     const number = (await page.locator('#orderReceipt').innerText()).match(/TARSI-\d{6,}/)?.[0];
@@ -322,6 +323,8 @@ test('Navegador y sandbox Floot v2: entrega local, folio, ventana bancaria y rep
     await page.locator('[name="amount"]').fill('399');
     await page.click('#transferReport button[type="submit"]');
     await waitText(page,'#orderConfirmation','TRANSFERENCIA REPORTADA');
+    await page.click('#proofEmail');
+    await waitText(page,'#proofEmailDetails','Comprobante de pago · '+number);
     console.log('Pedido sintético registrado y reportado:', number);
   } finally {
     await page.close();
