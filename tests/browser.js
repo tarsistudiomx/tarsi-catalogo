@@ -363,6 +363,41 @@ test('Enlace de correo conserva el acceso en la pestaña y carga el folio correc
   } finally { await context.close(); }
 });
 
+test('Envío nacional gratis se refleja en la cotización y en el total enviado', async () => {
+  const page = await browser.newPage({viewport:{width:390,height:844}});
+  try {
+    await page.route('**/.netlify/functions/shipping-quote', route => route.fulfill({json:{
+      customer_price:180,shipping_charge:0,carrier_name:'Paquetería de prueba',
+      expires_at:new Date(Date.now()+300000).toISOString(),proof:'test-proof'
+    }}));
+    await page.route('**/.netlify/functions/submit-order', route => {
+      const body=route.request().postDataJSON();
+      assert.equal(body.acceptedTotal,1398);
+      assert.equal(body.proof,'test-proof');
+      return route.fulfill({json:{number:'TARSI-000004',status:'Pendiente de pago',isFlow:true,items:[],
+        subtotal:1398,shipping:0,total:1398,delivery:'Envío nacional'}});
+    });
+    await page.goto(base);
+    await selectProduct(page,0,'S',4);
+    await page.click('#navCart');
+    await page.fill('#buyer','Cliente de prueba');
+    await page.fill('#buyerEmail','cliente@example.invalid');
+    await page.fill('#phone','5555550000');
+    await page.selectOption('#delivery','Envío nacional');
+    await page.fill('#zipCode','01000');
+    await page.waitForFunction(()=>document.querySelector('#state').value==='Ciudad de México');
+    await page.fill('#neighborhood','San Ángel');
+    await page.fill('#street','Calle de prueba 123');
+    await page.click('#quoteShipping');
+    await waitText(page,'#shippingStatus','Envío nacional gratis');
+    await waitText(page,'#totals .final','$1,398 MXN');
+    await page.click('#submitOrder');
+    await waitText(page,'#orderIntro','TARSI-000004');
+    await page.click('#receiptSummary summary');
+    await waitText(page,'#orderReceipt','Gratis');
+  } finally { await page.close(); }
+});
+
 test('Navegador y sandbox Floot v2: entrega local, folio, ventana bancaria y reporte', {
   skip: process.env.TARSI_TEST_FLOOT_V2 !== '1'
 }, async () => {

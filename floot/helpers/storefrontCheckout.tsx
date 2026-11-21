@@ -10,6 +10,7 @@ import {orderAction, schema as legacyAction, destination} from '../endpoints/tar
 import {payload} from '../endpoints/tarsi_web_order_POST.schema';
 import type {z} from 'zod';
 
+const freeShippingThreshold = 1300;
 const upstream = 'https://tarsi-skydropx.netlify.app/.netlify/functions/';
 type Destination = z.infer<typeof destination>;
 type Order = z.infer<typeof payload>;
@@ -101,7 +102,7 @@ export async function handleStorefront(request:Request,isTest:boolean, flow=fals
       await allot('quote',isTest);
       const address=await canonical(input.destination);
       const {quote,days}=await currentTariff(address,input.quantity);
-      return json({customer_price:quote.price,carrier_name:quote.carrier,carrier_service:quote.service,
+      return json({customer_price:quote.price,shipping_charge:flow&&subtotal(input.quantity)>=freeShippingThreshold?0:quote.price,carrier_name:quote.carrier,carrier_service:quote.service,
         expires_at:quote.expires,estimated_days:days,service:'Envío TARSI',proof:seal(quote,isTest)});
     }
     if(input.mode==='report'){
@@ -124,7 +125,7 @@ export async function handleStorefront(request:Request,isTest:boolean, flow=fals
       let quote:Order['skydropx']=null;
       if(order.delivery==='Envío nacional'){
         ({quote}=await currentTariff(address,order.quantity));
-        if(quote.price!==order.shipping||quote.carrier!==order.carrier||quote.service!==order.service)
+        if((order.shipping>0&&quote.price!==order.shipping)||quote.carrier!==order.carrier||quote.service!==order.service)
           return json({error:'Cambió la tarifa o el servicio de envío. No transfieras; contacta a TARSI para revisar el mismo folio.'},409);
       }else if(normalize(address.area_level1)!=='queretaro'){
         return json({error:'La entrega local ya no está disponible para ese domicilio.'},409);
@@ -175,8 +176,13 @@ export async function handleStorefront(request:Request,isTest:boolean, flow=fals
         }
         const quote=input.delivery==='Envío nacional'?open(input.proof,address,quantity,isTest):null;
         const merchandise=subtotal(quantity);
-        const shipping=quote?.price??0;
-        if(merchandise+shipping!==input.acceptedTotal) throw new VisibleError(409,'El importe cambió. Revisa el total antes de continuar.');
+        const quotedShipping=quote?.price??0;
+        const freeShipping=flow&&quote!==null&&merchandise>=freeShippingThreshold;
+        const shipping=freeShipping?0:quotedShipping;
+        // Cached storefronts can still show the full carrier price. Charge the lower total.
+        const acceptsShippingOffer=freeShipping&&input.acceptedTotal===merchandise+quotedShipping;
+        if(merchandise+shipping!==input.acceptedTotal&&!acceptsShippingOffer)
+          throw new VisibleError(409,'El importe cambió. Revisa el total antes de continuar.');
         const order=payload.parse({items,quantity,customer:input.customer,address:{...address,street:input.address.street},
           delivery:input.delivery,subtotal:merchandise,discount:quantity*unit-merchandise,shipping,total:merchandise+shipping,
           promotions:{threePack:Math.floor(quantity/3),twoPack:quantity%3===2?1:0},

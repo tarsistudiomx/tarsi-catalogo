@@ -104,3 +104,18 @@ El archivo `netlify/functions/tarsi-order-clock.mjs` activa el procesador cada c
 ### Varios pedidos desde el mismo navegador
 
 La tienda conserva un acceso independiente por pedido registrado y muestra un selector por folio cuando hay varios. Cada acceso recupera su estado del servidor. Un enlace recibido por correo puede abrirse y recargarse en su pestaña sin agregar el pedido a la lista permanente de ese dispositivo. El navegador conserva solamente el folio y la clave privada de recuperación con metadatos locales, sin nombres, direcciones ni datos de transferencia. El acceso único de la versión anterior sigue siendo utilizable si todavía está guardado. Si la versión anterior ya lo reemplazó, recuperar el pedido original con el enlace de correo o reemitirlo desde Floot después de verificar la solicitud.
+
+
+### Diagnóstico de recordatorios
+
+Un conteo `processed` en Netlify representa trabajos tomados por el procesador. También cuenta trabajos omitidos, reintentos y fallos. Consultar `tarsi_mail_outbox` por folio y tipo `reminder` antes de afirmar que se envió. El estado `accepted` y la fecha `accepted_at` acreditan aceptación por Gmail, sin confirmar llegada a la bandeja. El Dashboard puede exponer esos estados dentro del detalle autorizado del pedido, sin incluir la clave de recuperación, los identificadores del proveedor ni el cuerpo del correo. Para estado `review`, verificar el envío antes de reintentar para evitar duplicados.
+
+### Envío nacional gratis desde $1,300 MXN
+
+El umbral aplica al subtotal de prendas después de promociones. Con los paquetes actuales, tres prendas cuestan $999 MXN más envío y cuatro cuestan $1,398 MXN con envío nacional gratis. Se conserva la cotización Skydropx para comprobar cobertura, paquetería y costo interno, aunque el cliente pague $0 por envío. La entrega local en Querétaro sigue cotizándose el día de la entrega. Floot calcula el importe de compra y lo guarda en el pedido. Los pedidos anteriores conservan el precio acordado. Los navegadores con una versión anterior pueden registrar el total reducido si habían visto el costo completo de la misma cotización.
+
+Para el despliegue coordinado, aplicar primero el helper de Floot al entorno de pruebas y comprobar una cotización nacional debajo del umbral y otra que lo alcance. Publicar el helper de producción antes de promover el candidato verificado de Netlify, que debe conservar las claves privadas del deploy para checkout y correo. Probar la tienda pública sin generar pedidos de producción.
+
+### Preparación del cierre de pruebas
+
+Antes de retirar pedidos de ensayo, guardar el diagnóstico del recordatorio de la compra abandonada. Identificar por folio y evidencia los ensayos en ambas vistas de Floot. La vista de pedidos reales puede contener ensayos hechos desde la tienda publicada y pedidos ingresados después de que se solicitó la limpieza. Respaldar los folios identificados y sus dependencias antes de retirarlos, limitar cualquier operación a esa lista y no reutilizar folios. Reconciliar las unidades de los ensayos que descontaron existencias, conservar ajustes posteriores y comprobar el saldo físico. Conteo anterior declarado por el usuario: S 4, M 6, L 4, XL 2. XXL se inicializó en cero al no haberse declarado unidades.

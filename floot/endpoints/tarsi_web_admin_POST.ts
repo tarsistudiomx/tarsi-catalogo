@@ -18,13 +18,16 @@ export async function handle(request: Request) {
   if (!parsed.success) return json({error: 'Solicitud inválida'}, 400);
   const input = parsed.data;
   if (input.action === 'list') {
-    const orders = await sql<{details: string; adjustments: string | null; transferReport:string|null; history: string | null}>`SELECT o.id, o.number, o.created_at, o.status, o.paid_at, o.tracking, w.queued_at, w.estimated_from::text, w.estimated_until::text,
+    const orders = await sql<{details: string; adjustments: string | null; transferReport:string|null; mailHistory:string|null; history: string | null}>`SELECT o.id, o.number, o.created_at, o.status, o.paid_at, o.tracking, w.queued_at, w.estimated_from::text, w.estimated_until::text,
       w.started_at, w.prepared_at, w.dispatched_at, w.delivered_at, w.dispatch_carrier, w.delivery_note,
       f.hold_until, f.recover_until, f.last_issue, f.revoked_at,
       CASE WHEN r.order_id IS NULL THEN NULL ELSE jsonb_build_object('bank',r.bank,'reference',r.reference,
         'date',r.transferred_on,'cents',r.cents,'details',r.details,'reportedAt',r.reported_at)::text END AS transfer_report,
       p.reference AS payment_reference, p.amount_cents AS payment_cents, p.verified_by AS payment_actor, p.note AS payment_note,
       (o.payload - 'skydropx')::text AS details,
+      (SELECT jsonb_agg(jsonb_build_object('kind',m.kind,'state',m.state,'attempts',m.attempts,
+        'dueAt',m.due_at,'acceptedAt',m.accepted_at,'lastError',m.last_error) ORDER BY m.due_at,m.kind)
+        FROM tarsi_mail_outbox m WHERE m.order_id=o.id)::text AS mail_history,
       (SELECT jsonb_agg(jsonb_build_object('cents', a.cents, 'reference', a.reference, 'reason', a.reason,
         'date', a.recorded_at, 'actorId', a.recorded_by) ORDER BY a.id DESC)
         FROM tarsi_order_adjustments a WHERE a.order_id=o.id)::text AS adjustments,
@@ -47,7 +50,7 @@ export async function handle(request: Request) {
       (coalesce(sum((o.payload->>'total')::integer * 100::bigint
         + coalesce((SELECT sum(a.cents) FROM tarsi_order_adjustments a WHERE a.order_id=o.id), 0)), 0) / 100.0)::float8 AS revenue,
       count(*)::integer AS paid FROM tarsi_web_orders o WHERE NOT o.is_test AND o.paid_at IS NOT NULL`.execute(db);
-    return json({orders: orders.rows.map(row => ({...row, details: JSON.parse(row.details), transferReport: row.transferReport ? JSON.parse(row.transferReport) : null, adjustments: row.adjustments ? JSON.parse(row.adjustments) : [], history: row.history ? JSON.parse(row.history) : []})), ...result.rows[0]});
+    return json({orders: orders.rows.map(row => ({...row, details: JSON.parse(row.details), transferReport: row.transferReport ? JSON.parse(row.transferReport) : null, adjustments: row.adjustments ? JSON.parse(row.adjustments) : [], history: row.history ? JSON.parse(row.history) : [], mailHistory: row.mailHistory ? JSON.parse(row.mailHistory) : []})), ...result.rows[0]});
   }
   const actor = session.user.id;
   const orderId = input.id;
