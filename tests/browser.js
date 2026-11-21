@@ -221,7 +221,7 @@ test('Checkout móvil: datos incompletos, doble clic, red, reintento, confirmaci
     await page.reload();
     await page.click('#navCart');
     await page.click('#recoverOrder');
-    await waitText(page, '#orderConfirmation', '¡TU PEDIDO FUE RECIBIDO!');
+    await waitText(page, '#orderConfirmation', 'TU PEDIDO SIGUE AQUÍ');
     assert.equal(requests[3].key, requests[1].key);
     assert.equal(requests[3].recover, true);
     assert.equal(await page.locator('#cartOverlay .modal').evaluate(modal => modal.scrollWidth <= modal.clientWidth), true);
@@ -258,7 +258,7 @@ test('Checkout móvil v2: enlace en otro contexto, reserva vencida y reporte tar
     await waitText(page,'#holdStatus','Renueva antes de transferir');
     await page.reload();
     await page.click('#resumePurchaseButton');
-    await waitText(page,'#orderConfirmation','¡TU PEDIDO FUE RECIBIDO!');
+    await waitText(page,'#orderConfirmation','TU PEDIDO SIGUE AQUÍ');
     await waitText(page,'#holdStatus','Renueva antes de transferir');
     await page.evaluate(() => Object.defineProperty(navigator,'clipboard',{
       value:{writeText:async value=>{window.copied=value;}},configurable:true
@@ -291,6 +291,76 @@ test('Checkout móvil v2: enlace en otro contexto, reserva vencida y reporte tar
     await page.click('#copyProofSubject');
     assert.equal(await page.evaluate(() => window.copied),'Comprobante de pago · TARSI-000001');
   } finally { await page.close(); }
+});
+
+test('Dos compras en el mismo navegador conservan folios y datos de transferencia separados', async () => {
+  const context = await browser.newContext({viewport:{width:390,height:844},isMobile:true,hasTouch:true});
+  const page = await context.newPage();
+  const saved = new Map();
+  const requestHandler = async route => {
+    const body = route.request().postDataJSON();
+    if (!body.recover) {
+      const number = saved.size + 1;
+      saved.set(body.key, {number:'TARSI-00000'+number,status:number===1?'Pendiente de pago':'Pagado',
+        isFlow:true,inventoryActive:true,holdUntil:new Date(Date.now()+150000).toISOString(),
+        items:[{name:'Playera de prueba',size:'M',qty:1}],subtotal:399,shipping:0,total:399,
+        transfer:number===1?{bank:'Prueba',holder:'Prueba',clabe:'000000000000000000'}:null});
+    }
+    return route.fulfill({json:saved.get(body.key)});
+  };
+  try {
+    await context.route('**/.netlify/functions/submit-order', requestHandler);
+    for (const number of [1,2]) {
+      await page.goto(base);
+      await selectProduct(page,0,'M',1);
+      await page.click('#navCart');
+      await page.fill('#buyer','Cliente '+number);
+      await page.fill('#buyerEmail','cliente'+number+'@example.invalid');
+      await page.fill('#phone','5555550000');
+      await page.click('#submitOrder');
+      await waitText(page,'#orderIntro','TARSI-00000'+number);
+    }
+    assert.equal(saved.size,2);
+    await page.reload();
+    await page.click('#resumePurchaseButton');
+    await waitText(page,'#savedOrdersDialog','MIS PEDIDOS');
+    await page.getByRole('button',{name:'TARSI-000002'}).click();
+    await waitText(page,'#orderIntro','TARSI-000002 · PAGO VERIFICADO');
+    assert.equal(await page.locator('#transferDetails').isVisible(),false);
+    await page.locator('#orderConfirmation form[method=dialog] button').click();
+    await page.click('#resumePurchaseButton');
+    await page.getByRole('button',{name:'TARSI-000001'}).click();
+    await waitText(page,'#orderIntro','TARSI-000001');
+    assert.equal(await page.locator('#transferDetails').isVisible(),true);
+    await page.click('#openReport');
+    await page.locator('[name=bank]').fill('Banco de prueba');
+    await page.locator('#orderConfirmation form[method=dialog] button').click();
+    await page.click('#resumePurchaseButton');
+    await page.getByRole('button',{name:'TARSI-000001'}).click();
+    await page.click('#openReport');
+    assert.equal(await page.locator('[name=bank]').inputValue(),'');
+    assert.equal(saved.size,2);
+  } finally { await context.close(); }
+});
+
+test('Enlace de correo conserva el acceso en la pestaña y carga el folio correcto', async () => {
+  const context = await browser.newContext();
+  const key = 'dc6404ba-235a-45cd-8f2f-623faa99723b';
+  try {
+    await context.route('**/.netlify/functions/submit-order',route=>{
+      assert.equal(route.request().postDataJSON().key,key);
+      return route.fulfill({json:{number:'TARSI-000039',status:'Pagado',isFlow:true,items:[],subtotal:399,shipping:0,total:399}});
+    });
+    const page=await context.newPage();
+    await page.goto(base+'/#pedido='+key);
+    await waitText(page,'#orderIntro','TARSI-000039');
+    await page.reload();
+    await page.click('#resumePurchaseButton');
+    await waitText(page,'#orderIntro','TARSI-000039');
+    const anotherTab=await context.newPage();
+    await anotherTab.goto(base);
+    assert.equal(await anotherTab.locator('#resumePurchase').isVisible(),false);
+  } finally { await context.close(); }
 });
 
 test('Navegador y sandbox Floot v2: entrega local, folio, ventana bancaria y reporte', {

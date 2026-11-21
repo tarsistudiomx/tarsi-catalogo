@@ -7,14 +7,15 @@
   const preview = /^deploy-preview-\d+--tarsi-skydropx\.netlify\.app$/.test(location.hostname);
   const draftKey = 'tarsi-checkout-attempt';
   const savedOrderKey = 'tarsi-saved-order';
+  const savedOrderPrefix = savedOrderKey + ':';
+  const validKey = key => /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(key);
   const fields = [...document.querySelectorAll('.cart-modal .checkout input, .cart-modal .checkout select')];
-  let attempt;
   let receipt;
   let timer;
   const labels={'Pendiente de pago':'SIN REPORTE DE PAGO','Pago por verificar':'PAGO REPORTADO · POR VERIFICAR',
     Pagado:'PAGO VERIFICADO','En preparación':'PAGO VERIFICADO · EN PREPARACIÓN',Enviado:'PAGO VERIFICADO · ENVIADO',Entregado:'PAGO VERIFICADO · ENTREGADO'};
   const linkedKey = new URLSearchParams(location.hash.slice(1)).get('pedido');
-  const fromLink = linkedKey && /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(linkedKey);
+  const fromLink = validKey(linkedKey);
 
   function draft() {
     const value = id => $(id).value.trim();
@@ -63,16 +64,54 @@
 
   let shareText = '';
   let recoveryKey = '';
-  let savedKey = '';
-  try {
-    savedKey = localStorage.getItem(savedOrderKey) || '';
-    recoveryKey = savedKey || JSON.parse(localStorage.getItem(draftKey))?.key || '';
-  } catch {}
-  if (fromLink) recoveryKey = linkedKey;
-  function showRecoveryControls() {
-    $('recoverOrder').hidden = !recoveryKey;
-    $('resumePurchase').hidden = !recoveryKey;
+  const savedOrders = new Map();
+  function draftRecoveryKey() {
+    try {
+      const key = JSON.parse(localStorage.getItem(draftKey))?.key;
+      return validKey(key) ? key : '';
+    } catch { return ''; }
   }
+
+  function rememberOrder(key, number, tabOnly) {
+    if (savedOrders.get(key)?.number === number) return;
+    const order = {number, savedAt: Date.now(), tabOnly};
+    savedOrders.set(key, order);
+    try { (tabOnly ? sessionStorage : localStorage).setItem(savedOrderPrefix + key, JSON.stringify(order)); } catch {}
+  }
+
+  function recoverableOrders() {
+    const orders = new Map(savedOrders);
+    for (const tabOnly of [true, false]) {
+      try {
+        const storage = tabOnly ? sessionStorage : localStorage;
+        for (let index = 0; index < storage.length; index++) {
+          const entry = storage.key(index);
+          if (!entry?.startsWith(savedOrderPrefix)) continue;
+          const key = entry.slice(savedOrderPrefix.length);
+          if (!validKey(key)) continue;
+          try {
+            const order = JSON.parse(storage.getItem(entry));
+            if (typeof order?.number === 'string') orders.set(key, {...order, tabOnly});
+          } catch {}
+        }
+      } catch {}
+    }
+    try {
+      const legacy = localStorage.getItem(savedOrderKey);
+      if (validKey(legacy) && !orders.has(legacy)) orders.set(legacy, {number: 'Pedido guardado', tabOnly: false});
+    } catch {}
+    const draftKey = draftRecoveryKey();
+    if (draftKey && !orders.has(draftKey)) orders.set(draftKey, {number: 'Registro por comprobar', tabOnly: false});
+    return [...orders].sort(([, a], [, b]) => (b.savedAt || 0) - (a.savedAt || 0));
+  }
+
+  function showRecoveryControls() {
+    const total = recoverableOrders().length;
+    $('recoverOrder').hidden = !total;
+    $('resumePurchase').hidden = !total;
+    $('resumePurchaseButton').textContent = total > 1 ? 'VER MIS PEDIDOS' : 'CONTINUAR MI PEDIDO';
+  }
+  window.addEventListener('storage', showRecoveryControls);
   showRecoveryControls();
   function share(order, quote, saved) {
     if (!order.items.length) return toast('AGREGA AL MENOS UNA PLAYERA');
@@ -85,7 +124,9 @@
     catch { $('shareStatus').textContent = 'No se pudo copiar el resumen.'; }
   };
 
-  function showReceipt(data) {
+  function showReceipt(data, recovered = false) {
+    $('transferReport').reset();
+    $('transferReportStatus').textContent = '';
     const box = $('orderReceipt');
     box.replaceChildren();
     function line(label, value) {
@@ -132,6 +173,9 @@
     $('legacyReceiptActions').hidden = Boolean(data.isFlow);
     $('savePaymentLink').hidden = !data.isFlow || !recoveryKey ||
       !['Pendiente de pago','Pago por verificar','Cancelado'].includes(data.status);
+    $('savePaymentLinkHint').textContent = recoverableOrders().some(([key, order]) => key === recoveryKey && !order.tabOnly)
+      ? 'Puedes volver a este pedido desde la tienda o guardar su enlace privado.'
+      : 'Para volver a este pedido, guarda su enlace privado o abre el de tu correo.';
     $('paymentLinkStatus').textContent = '';
     $('manualPaymentLink').hidden = true;
     $('manualPaymentLink').value = '';
@@ -153,7 +197,7 @@
     if (data.holdUntil) timer=setInterval(refreshHold,1000);
     if (!$('orderConfirmation').open) $('orderConfirmation').showModal();
     $('orderReceived').textContent = needsProof ? 'TRANSFERENCIA REPORTADA'
-      : fromLink ? 'TU PEDIDO SIGUE AQUÍ' : '¡TU PEDIDO FUE RECIBIDO!';
+      : recovered ? 'TU PEDIDO SIGUE AQUÍ' : '¡TU PEDIDO FUE RECIBIDO!';
     $('orderIntro').textContent = needsProof
       ? 'Falta el comprobante. TARSI verificará el depósito antes de confirmar tu pedido.'
       : data.status === 'Pendiente de pago' ? 'Pedido ' + data.number + ' · ' + money(data.total) + '. Transfiere y después envía tu comprobante.'
@@ -262,8 +306,9 @@
   };
 
   let busy = false;
-  async function submit(notify, recover = false, recoveryFeedback) {
+  async function submit(notify, orderKey = '', recoveryFeedback, fromEmail = false) {
     if (busy) return;
+    const recover = Boolean(orderKey);
     const order = recover ? null : draft();
     if (!recover && !order.items.length) return toast('AGREGA AL MENOS UNA PLAYERA');
     const quote = window.TarsiShipping.currentQuote();
@@ -276,28 +321,29 @@
       if (!recover) {
         if (fields.some(input => !input.checkValidity())) throw new Error('Revisa el formato de tu correo electrónico.');
         const loadAttempt = async () => {
-          attempt = await getAttempt(order);
+          const attempt = await getAttempt(order);
           localStorage.setItem(draftKey, JSON.stringify(attempt));
+          return attempt.key;
         };
-        if (navigator.locks) await navigator.locks.request(draftKey, loadAttempt);
-        else await loadAttempt();
-        recoveryKey = attempt.key;
+        orderKey = navigator.locks ? await navigator.locks.request(draftKey, loadAttempt) : await loadAttempt();
         showRecoveryControls();
       }
-      const payload = recover ? {key: recoveryKey, recover: true, notify} : {
-        ...order, key: recoveryKey, notify, proof: quote?.proof,
+      const payload = recover ? {key: orderKey, recover: true, notify} : {
+        ...order, key: orderKey, notify, proof: quote?.proof,
         acceptedTotal: fee === null ? undefined : pricing(count()) + fee
       };
       const result = await requestOrder(payload);
       if (!result.number || !Array.isArray(result.items)) throw new Error();
       receipt = result;
-      if (recover && fromLink) history.replaceState(null,'',location.pathname+location.search);
-      savedKey = recoveryKey;
-      try { localStorage.setItem(savedOrderKey,savedKey); } catch {}
+      recoveryKey = orderKey;
+      if (fromEmail) history.replaceState(null,'',location.pathname+location.search);
+      const saved = recoverableOrders().find(([key]) => key === orderKey)?.[1];
+      rememberOrder(orderKey, result.number, saved?.tabOnly ?? fromEmail);
       showRecoveryControls();
       if (!recover) { cart = []; save(); renderCart(); }
       feedback.textContent = '';
-      showReceipt(receipt);
+      if ($('savedOrdersDialog').open) $('savedOrdersDialog').close();
+      showReceipt(receipt, recover);
     } catch (error) {
       feedback.textContent = error instanceof TypeError || ['SyntaxError','TimeoutError','AbortError'].includes(error.name)
         ? 'No se pudo comprobar el registro. Reintenta con los mismos datos o usa Ver instrucciones de pago.' : error.message || 'No pudimos confirmar el registro.';
@@ -307,15 +353,30 @@
   }
   button.onclick = () => submit(false);
   $('emailOrder').onclick = () => submit(true);
-  $('recoverOrder').onclick = () => submit(false, true);
-  $('resumePurchaseButton').onclick = () => {
+  function openSavedOrders(feedback) {
     if (busy) return;
-    if (savedKey) recoveryKey = savedKey;
-    void submit(false, true, $('resumePurchaseStatus'));
-  };
-  $('emailReceipt').onclick = () => submit(true, true);
+    const orders = recoverableOrders();
+    if (orders.length === 1) return submit(false, orders[0][0], feedback);
+    if (!orders.length) return;
+    $('savedOrdersStatus').textContent = '';
+    const list = $('savedOrdersList');
+    list.replaceChildren();
+    for (const [key, order] of orders) {
+      const row = document.createElement('li');
+      const open = document.createElement('button');
+      open.type = 'button';
+      open.textContent = order.number;
+      open.onclick = () => submit(false, key, $('savedOrdersStatus'));
+      row.append(open);
+      list.append(row);
+    }
+    $('savedOrdersDialog').showModal();
+  }
+  $('recoverOrder').onclick = () => openSavedOrders(status);
+  $('resumePurchaseButton').onclick = () => openSavedOrders($('resumePurchaseStatus'));
+  $('emailReceipt').onclick = () => submit(true, recoveryKey);
   if (fromLink) {
     $('navCart').click();
-    void submit(false,true);
+    void submit(false, linkedKey, undefined, true);
   }
 })();
