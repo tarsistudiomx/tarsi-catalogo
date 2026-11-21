@@ -7,6 +7,15 @@ import {transitions, type OrderStatus} from '../endpoints/tarsi_web_admin_POST.s
 import type {payload} from '../endpoints/tarsi_web_order_POST.schema';
 import type {z} from 'zod';
 
+const mailKinds = {
+  registered: 'Solicitud registrada', reminder: 'Recordatorio de pago', reported: 'Aviso de pago reportado',
+  confirmed: 'Pago confirmado', recovery: 'Enlace nuevo'
+};
+const mailStates = {
+  pending: 'Pendiente', sending: 'En proceso', accepted: 'Aceptado por Gmail',
+  suppressed: 'Omitido por el estado del pedido o de su enlace', failed: 'Falló', review: 'Requiere revisión'
+};
+
 type Order = {
   id: string; number: string; status: OrderStatus; createdAt: string; tracking: string | null;
   paidAt: string | null; queuedAt: string | null; estimatedFrom: string; estimatedUntil: string; startedAt: string | null; preparedAt: string | null; paymentReference: string | null; paymentNote: string | null;
@@ -14,6 +23,8 @@ type Order = {
   holdUntil:string|null; recoverUntil:string|null; revokedAt:string|null; lastIssue:string|null;
   transferReport:{bank:string;reference:string|null;date:string;cents:number;details:string|null;reportedAt:string}|null;
   adjustments: {cents:number; reference:string; reason:string; date:string; actorId:number}[];
+  mailHistory?: {kind:keyof typeof mailKinds;state:keyof typeof mailStates;attempts:number;
+    dueAt:string;acceptedAt:string|null;lastError:string|null}[];
   history: {status: OrderStatus; date: string; actorId: number | null}[];
 };
 const awaitingPayment = (order: Order) => order.status === 'Pendiente de pago' || order.status === 'Pago por verificar';
@@ -145,6 +156,16 @@ export function WebOrders({onRevenue, tab, openOrder}: {tab: string; openOrder: 
       <p>{order.details.delivery} {[order.details.carrier, order.details.service].filter(Boolean).join(' · ')}</p>
       <ul>{order.details.items.map(item => <li key={item.id + ':' + item.size}>{item.name} · {item.size} × {item.qty}</li>)}</ul>
       <p>Subtotal {money(order.details.subtotal)} · Envío {order.details.delivery === 'Entrega en Querétaro' ? 'por cotizar el día de la entrega' : money(order.details.shipping)} · Total {money(order.details.total)}</p>
+      {Boolean(order.mailHistory?.length) && <details>
+        <summary>Estado de los correos</summary>
+        <ul>{order.mailHistory?.map(mail => <li key={mail.kind}>
+          <strong>{mailKinds[mail.kind]}</strong> · {test && mail.state==='accepted' ? 'Aceptado en pruebas' : mailStates[mail.state]}
+          {mail.acceptedAt && <> · {new Date(mail.acceptedAt).toLocaleString('es-MX')}</>}
+          {mail.state==='pending' && <> · {new Date(mail.dueAt).toLocaleString('es-MX')}</>}
+          {mail.attempts>0 && <> · Intentos: {mail.attempts}</>}
+          {mail.lastError && <> · {mail.lastError}</>}
+        </li>)}</ul>
+      </details>}
       <div className={styles.actions}>
       {order.lastIssue&&<p><strong>Revisión:</strong> {order.lastIssue}</p>}
       {order.holdUntil&&awaitingPayment(order)&&<p>Reserva {Date.parse(order.holdUntil)<=Date.now()?'vencida':'hasta '+new Date(order.holdUntil).toLocaleString('es-MX')}</p>}

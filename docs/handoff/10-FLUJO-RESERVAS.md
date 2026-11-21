@@ -104,3 +104,8 @@ El archivo `netlify/functions/tarsi-order-clock.mjs` activa el procesador cada c
 ### Varios pedidos desde el mismo navegador
 
 La tienda conserva un acceso independiente por pedido registrado y muestra un selector por folio cuando hay varios. Cada acceso recupera su estado del servidor. Un enlace recibido por correo puede abrirse y recargarse en su pestaña sin agregar el pedido a la lista permanente de ese dispositivo. El navegador conserva solamente el folio y la clave privada de recuperación con metadatos locales, sin nombres, direcciones ni datos de transferencia. El acceso único de la versión anterior sigue siendo utilizable si todavía está guardado. Si la versión anterior ya lo reemplazó, recuperar el pedido original con el enlace de correo o reemitirlo desde Floot después de verificar la solicitud.
+
+
+### Diagnóstico de recordatorios
+
+Un conteo `processed` en Netlify representa trabajos tomados por el procesador. También cuenta trabajos omitidos, reintentos y fallos. Consultar `tarsi_mail_outbox` por folio y tipo `reminder` antes de afirmar que se envió. El estado `accepted` y la fecha `accepted_at` acreditan aceptación por Gmail, sin confirmar llegada a la bandeja. El Dashboard puede exponer esos estados dentro del detalle autorizado del pedido, sin incluir la clave de recuperación, los identificadores del proveedor ni el cuerpo del correo. Para estado `review`, verificar el envío antes de reintentar para evitar duplicados.

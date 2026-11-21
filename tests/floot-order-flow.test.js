@@ -127,6 +127,10 @@ test('Floot v2 over isolated PostgreSQL: checkout, reservation, report, approval
     assert.equal(pending.orders.length,1);
     const id = pending.orders[0].id;
     assert.equal(pending.paid,0);
+    const pendingReminder=pending.orders[0].mailHistory.find(mail=>mail.kind==='reminder');
+    assert.equal(pendingReminder.state,'pending');
+    assert.equal(pendingReminder.attempts,0);
+    assert.ok(Date.parse(pendingReminder.dueAt)>Date.now());
     assert.equal((await manage({action:'list'},false)).status,403);
     await pg.exec("UPDATE tarsi_order_flow SET hold_until=now()-interval '11 hours 30 minutes' WHERE hold_until IS NOT NULL");
     await pg.query("UPDATE tarsi_web_orders SET created_at=now()-interval '12 hours' WHERE id=$1",[id]);
@@ -155,7 +159,12 @@ test('Floot v2 over isolated PostgreSQL: checkout, reservation, report, approval
     const second = fixture('S');
     const next = await send(second);
     assert.equal(next.status,200);
-    assert.notEqual((await next.json()).number,receipt.number);
+    const secondNumber = (await next.json()).number;
+    assert.notEqual(secondNumber,receipt.number);
+    const retrying = await (await manage({action:'list',search:secondNumber})).json();
+    const registration = retrying.orders[0].mailHistory.find(mail=>mail.kind==='registered');
+    assert.equal(registration.state,'pending');
+    assert.equal(registration.lastError,'Gmail HTTP 429');
     assert.equal((await send({...report,key:second.key})).status,409);
     assert.equal((await pg.query('SELECT last_issue FROM tarsi_order_flow WHERE recovery_key=$1',[second.key])).rows[0].last_issue,
       'Referencia reportada en otro pedido');
@@ -166,6 +175,14 @@ test('Floot v2 over isolated PostgreSQL: checkout, reservation, report, approval
     assert.equal(mails.filter(message=>/Sigue con tu pedido TARSI-/.test(message)).length,1);
     assert.equal((await pg.query("SELECT count(*)::int AS n FROM tarsi_mail_outbox WHERE kind='reminder' AND state='accepted'")).rows[0].n,1);
     assert.equal((await drain(true)).processed,0);
+    const accepted = await (await manage({action:'list',search:secondNumber})).json();
+    const reminder = accepted.orders[0].mailHistory.find(mail=>mail.kind==='reminder');
+    assert.equal(reminder.state,'accepted');
+    assert.equal(reminder.attempts,1);
+    assert.ok(Date.parse(reminder.acceptedAt));
+    assert.equal(reminder.providerId,undefined);
+    const suppressed = await (await manage({action:'list',search:receipt.number})).json();
+    assert.equal(suppressed.orders[0].mailHistory.find(mail=>mail.kind==='reminder').state,'suppressed');
     assert.equal((await manage({action:'revoke-recovery',id})).status,200);
     assert.equal((await send({mode:'recover',key:primary.key})).status,404);
     assert.equal((await manage({action:'reissue-recovery',id})).status,200);
