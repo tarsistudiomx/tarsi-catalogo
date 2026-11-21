@@ -22,7 +22,8 @@
 .shipping-panel button:disabled{opacity:.55;cursor:wait}
 #shippingStatus{font-size:13px;margin-top:13px;line-height:1.5}
 .actions .email-action{display:grid;place-items:center;text-align:center;text-decoration:none;border:1px solid var(--ink);border-radius:12px;padding:15px 10px;font-size:12px;font-weight:900}#orderActions h3,#orderConfirmation h3{color:var(--green);margin:20px 0 8px}#proofInstagram{text-decoration:none;text-align:center;align-content:center}#proofInstagram[hidden]{display:none}#submitOrder:disabled{opacity:.65}#orderReceipt{overflow-wrap:anywhere}#bankDetails dd{margin:0 0 8px;overflow-wrap:anywhere}
-.tarsi-dialog{background:var(--bone);color:var(--ink);width:min(92vw,520px);max-height:88dvh;overflow:auto;border:1px solid var(--ink);border-radius:18px;padding:20px;overflow-wrap:anywhere}.tarsi-dialog::backdrop{background:#19181599}.tarsi-dialog .actions a{text-align:center}.tarsi-dialog > form[method="dialog"]{text-align:right}.tarsi-dialog form[hidden]{display:none}.tarsi-dialog .checkout{margin-top:14px}.tarsi-dialog > button[hidden]{display:none}.tarsi-dialog > button:not([hidden]){margin:5px 0}#proofOptions{border:1px solid var(--green);border-radius:14px;background:#fcf8f2;padding:12px;margin:12px 0}#proofOptions h4,#transferDetails h4{margin:0 0 8px}#proofOptions p{margin:8px 0}#proofEmailDetails{border-top:1px solid #d6cbbd;margin-top:12px;padding-top:4px}#proofEmailDetails[hidden],#legacyReceiptActions[hidden]{display:none}#receiptSummary{margin:16px 0}#receiptSummary summary{cursor:pointer;font-weight:700}#bankDetails{display:grid;grid-template-columns:max-content 1fr;gap:8px 14px}#bankDetails dt{font-weight:700}#bankDetails dd{margin:0}#resumePurchase{text-align:center;padding:10px;background:var(--bone)}#resumePurchase[hidden],#savePaymentLink[hidden],#manualPaymentLink[hidden]{display:none}#resumePurchaseStatus:empty,#paymentLinkStatus:empty{display:none}#resumePurchaseStatus,#paymentLinkStatus{margin:6px 0}#savePaymentLink{margin:10px 0;padding:10px 12px;border-left:3px solid var(--green);background:#fcf8f2}#savePaymentLink p{margin:4px 0 8px}#copyPaymentLink{min-height:44px;border:1px solid var(--green);color:var(--green);background:var(--bone);padding:8px 12px;border-radius:10px;font-weight:700}#manualPaymentLink{width:100%}</style></head><body>
+.tarsi-dialog{background:var(--bone);color:var(--ink);width:min(92vw,520px);max-height:88dvh;overflow:auto;border:1px solid var(--ink);border-radius:18px;padding:20px;overflow-wrap:anywhere}.tarsi-dialog::backdrop{background:#19181599}.tarsi-dialog .actions a{text-align:center}.tarsi-dialog > form[method="dialog"]{text-align:right}.tarsi-dialog form[hidden]{display:none}.tarsi-dialog .checkout{margin-top:14px}.tarsi-dialog > button[hidden]{display:none}.tarsi-dialog > button:not([hidden]){margin:5px 0}#proofOptions{border:1px solid var(--green);border-radius:14px;background:#fcf8f2;padding:12px;margin:12px 0}#proofOptions h4,#transferDetails h4{margin:0 0 8px}#proofOptions p{margin:8px 0}#proofEmailDetails{border-top:1px solid #d6cbbd;margin-top:12px;padding-top:4px}#proofEmailDetails[hidden],#legacyReceiptActions[hidden]{display:none}#receiptSummary{margin:16px 0}#receiptSummary summary{cursor:pointer;font-weight:700}#bankDetails{display:grid;grid-template-columns:max-content 1fr;gap:8px 14px}#bankDetails dt{font-weight:700}#bankDetails dd{margin:0}#resumePurchase{text-align:center;padding:10px;background:var(--bone)}#resumePurchase[hidden],#savePaymentLink[hidden],#manualPaymentLink[hidden]{display:none}#resumePurchaseStatus:empty,#paymentLinkStatus:empty{display:none}#resumePurchaseStatus,#paymentLinkStatus{margin:6px 0}#savePaymentLink{margin:10px 0;padding:10px 12px;border-left:3px solid var(--green);background:#fcf8f2}#savePaymentLink p{margin:4px 0 8px}#copyPaymentLink{min-height:44px;border:1px solid var(--green);color:var(--green);background:var(--bone);padding:8px 12px;border-radius:10px;font-weight:700}#manualPaymentLink{width:100%}
+#savedOrdersList{list-style:none;padding:0;display:grid;gap:8px}#savedOrdersList button{width:100%;min-height:44px;border:1px solid var(--green);border-radius:10px;background:#fcf8f2;color:var(--ink);font-weight:700;text-align:left;padding:10px 12px;overflow-wrap:anywhere}</style></head><body>
 <header><a href="#inicio" aria-label="Inicio TARSI"><img class="logo" src="assets/logo-original.png" alt="TARSI"></a><nav><a href="#catalogo">VER PLAYERAS</a><button class="pill" id="navCart">CARRITO (0)</button></nav></header>
 <section id="resumePurchase" aria-label="Pedido guardado" hidden>
 <button type="button" class="pill" id="resumePurchaseButton">CONTINUAR MI PEDIDO</button>
@@ -49,6 +50,14 @@
 <div class="actions"><button id="shareOrder">COMPARTIR RESUMEN</button><button id="emailOrder">ENVIAR POR CORREO</button></div>
 <p id="orderStatus" role="status" aria-live="polite"></p>
 </section><button id="recoverOrder" class="pill" hidden>VER INSTRUCCIONES DE PAGO</button></div></div>
+<dialog id="savedOrdersDialog" class="tarsi-dialog" aria-labelledby="savedOrdersTitle">
+<form method="dialog"><button class="pill">Cerrar</button></form>
+<h3 id="savedOrdersTitle">MIS PEDIDOS</h3>
+<p>Elige el folio que quieres consultar.</p>
+<ul id="savedOrdersList"></ul>
+<p id="savedOrdersStatus" role="status"></p>
+<p>Si tu pedido no aparece, ábrelo con el enlace privado que te enviamos por correo.</p>
+</dialog>
 <dialog id="orderConfirmation" class="tarsi-dialog" aria-labelledby="orderReceived">
 <form method="dialog"><button class="pill">Cerrar</button></form>
 <h3 id="orderReceived">¡TU PEDIDO FUE RECIBIDO!</h3>
@@ -71,7 +80,7 @@
 
 </div>
 <div id="savePaymentLink" hidden>
-<p>Si sales a transferir, puedes volver aquí y tocar «Continuar mi pedido». También puedes guardar este enlace privado.</p>
+<p id="savePaymentLinkHint"></p>
 <button id="copyPaymentLink" type="button">COPIAR ENLACE DE MI PEDIDO</button>
 <p id="paymentLinkStatus" role="status"></p>
 <input id="manualPaymentLink" aria-label="Enlace privado del pedido" readonly hidden>

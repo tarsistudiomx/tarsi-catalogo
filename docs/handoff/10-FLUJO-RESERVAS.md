@@ -100,3 +100,7 @@ Gmail aceptó por su API un correo con asunto `[PRUEBA TARSI] Verificacion de Gm
 ### Programador nativo de Netlify
 
 El archivo `netlify/functions/tarsi-order-clock.mjs` activa el procesador cada cinco minutos en el despliegue publicado. Lee `mailWorkerKey` del mismo Blob privado de ese deploy. Los despliegues previos quedan protegidos. Para evitar dos programadores simultáneos, conservar `TARSI_MAIL_SCHEDULER_ENABLED=false` en GitHub si el control de Netlify está activo. El umbral para procesar recordatorios sigue siendo 20 minutos. Buscar el registro `TARSI_MAIL_SCHEDULE_OK` por deploy para comprobar la llamada automática.
+
+### Varios pedidos desde el mismo navegador
+
+La tienda conserva un acceso independiente por pedido registrado y muestra un selector por folio cuando hay varios. Cada acceso recupera su estado del servidor. Un enlace recibido por correo puede abrirse y recargarse en su pestaña sin agregar el pedido a la lista permanente de ese dispositivo. El navegador conserva solamente el folio y la clave privada de recuperación con metadatos locales, sin nombres, direcciones ni datos de transferencia. El acceso único de la versión anterior sigue siendo utilizable si todavía está guardado. Si la versión anterior ya lo reemplazó, recuperar el pedido original con el enlace de correo o reemitirlo desde Floot después de verificar la solicitud.
