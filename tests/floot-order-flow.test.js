@@ -229,6 +229,7 @@ test('Floot v2 over isolated PostgreSQL: checkout, reservation, report, approval
     assert.equal(four.customer_price,150);
     assert.equal(four.shipping_charge,0);
     const promotion = {...fixture('XL'),delivery:'Envío nacional',items:[{id:0,size:'XL',qty:4}],proof:four.proof};
+    promotion.customer.email='recordatorio@example.invalid';
     assert.equal((await send({...promotion,acceptedTotal:1397},false)).status,409);
     const free = await send({...promotion,acceptedTotal:1398},false);
     assert.equal(free.status,200);
@@ -243,6 +244,15 @@ test('Floot v2 over isolated PostgreSQL: checkout, reservation, report, approval
     const renewedFreeShipping = await send({mode:'renew',key:promotion.key},false);
     assert.equal(renewedFreeShipping.status,200);
     assert.equal((await renewedFreeShipping.json()).total,1398);
+    const remindersFor = number => mails.filter(message => message.includes('Subject: Sigue con tu pedido '+number));
+    assert.equal(remindersFor(freeReceipt.number).length,0);
+    await pg.query("UPDATE tarsi_mail_outbox SET due_at=now() WHERE kind='reminder' AND order_id=(SELECT id FROM tarsi_web_orders WHERE number=$1)",[freeReceipt.number]);
+    assert.equal((await runWorker(workerKey)).status,200);
+    assert.equal((await runWorker(workerKey)).status,200);
+    const liveReminder = remindersFor(freeReceipt.number);
+    assert.equal(liveReminder.length,1);
+    assert.match(liveReminder[0],/From: tarsi\.studiomx@gmail\.com/);
+    assert.match(liveReminder[0],/To: recordatorio@example\.invalid/);
   } finally {
     global.fetch = savedFetch;
     delete global[symbol];
