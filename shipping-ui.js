@@ -1,7 +1,8 @@
 'use strict';
 
 (() => {
-  const live = ['tarsistudiomx.github.io','tarsi-skydropx.netlify.app'].includes(location.hostname);
+  const usesCheckoutQuote =  ['tarsistudiomx.github.io','tarsi-skydropx.netlify.app'].includes(location.hostname) ||
+    /^deploy-preview-(?:[7-9]|[1-9]\d+)--tarsi-skydropx\.netlify\.app$/.test(location.hostname);
   const api = location.hostname === 'tarsistudiomx.github.io' ? 'https://tarsi-skydropx.netlify.app' : '';
   const zip = $('zipCode');
   const colony = $('neighborhood');
@@ -32,16 +33,20 @@
     return national() && quote && Date.parse(quote.expires_at) > Date.now() ? quote : null;
   }
 
+  function charge(value = currentQuote()) {
+    return value?.shipping_charge ?? value?.customer_price ?? null;
+  }
+
   function renderTotals() {
     const pieces = count();
     const items = pricing(pieces);
     const shipping = currentQuote();
-    const fee = shipping?.customer_price ?? (local() ? 0 : null);
+    const fee = local() ? 0 : charge(shipping);
     $('totals').innerHTML = `
       <div class="totalrow"><span>${pieces} piezas · precio individual</span><b>${money(pieces * unitPrice)}</b></div>
       <div class="totalrow"><span>Descuento por promociones</span><b>− ${money(pieces * unitPrice - items)}</b></div>
       <div class="totalrow"><span>Subtotal de prendas</span><b>${money(items)}</b></div>
-      <div class="totalrow"><span>Envío</span><b>${local() ? 'Por cotizar el día de la entrega' : fee !== null ? money(fee) : national() ? 'Por cotizar' : 'Por confirmar'}</b></div>
+      <div class="totalrow"><span>Envío</span><b>${local() ? 'Por cotizar el día de la entrega' : fee === 0 ? 'Gratis' : fee !== null ? money(fee) : national() ? 'Por cotizar' : 'Por confirmar'}</b></div>
       <div class="totalrow final"><span>${local() ? 'TOTAL A TRANSFERIR' : 'TOTAL'}</span><span>${fee !== null ? money(items + fee) : pieces ? 'Por confirmar' : money(0)}</span></div>`;
     $('quoteShipping').disabled = !national() || !pieces || pieces > maxQuantity || Boolean(shippingLookup);
   }
@@ -138,16 +143,17 @@
     shippingLookup = controller;
     renderTotals();
     try {
-      const result = await request(live ? 'checkout-quote' : 'shipping-quote', {destination: address, quantity: count()}, controller.signal);
+      const result = await request(usesCheckoutQuote ? 'checkout-quote' : 'shipping-quote', {destination: address, quantity: count()}, controller.signal);
       if (shippingLookup !== controller) return;
       if (!Number.isFinite(result.customer_price) || result.customer_price <= 0 ||
+        (result.shipping_charge != null && ![0,result.customer_price].includes(result.shipping_charge)) ||
         !(Date.parse(result.expires_at) > Date.now())) throw new Error('La cotización recibida es inválida.');
       quote = result;
       expiry = setTimeout(() => invalidate('La cotización venció. Consulta el costo nuevamente.'),
         Date.parse(result.expires_at) - Date.now());
       const carrier = [quote.carrier_name, quote.carrier_service].filter(Boolean).join(' ');
       shippingStatus.textContent = [
-        'Envío TARSI: ' + money(quote.customer_price),
+        charge() === 0 ? 'Envío nacional gratis' : 'Envío TARSI: ' + money(charge()),
         carrier,
         quote.estimated_days && 'Tránsito estimado: ' + quote.estimated_days + ' días hábiles'
       ].filter(Boolean).join(' · ') + '.';
@@ -180,5 +186,5 @@
     return true;
   }
 
-  window.TarsiShipping = {currentQuote, readyForShipping};
+  window.TarsiShipping = {currentQuote, charge, readyForShipping};
 })();

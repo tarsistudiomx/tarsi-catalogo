@@ -206,6 +206,7 @@ test('Floot v2 over isolated PostgreSQL: checkout, reservation, report, approval
     const national = {...fixture(),delivery:'Envío nacional',acceptedTotal:549};
     const quote = await (await send({mode:'quote',quantity:1,destination:national.address},false)).json();
     assert.equal(quote.customer_price,150);
+    assert.equal(quote.shipping_charge,150);
     assert.equal(quote.quotationId,undefined);
     assert.equal((await send({...national,proof:'invalid'},false)).status,409);
     const booked = await send({...national,proof:quote.proof},false);
@@ -221,6 +222,27 @@ test('Floot v2 over isolated PostgreSQL: checkout, reservation, report, approval
     assert.equal(liveConfirm.status,200,await liveConfirm.text());
     const collected = await metrics();
     assert.deepEqual([collected.orders.length,collected.paid,collected.revenue],[1,1,549]);
+    await pg.exec("INSERT INTO tarsi_blank_stock VALUES(false,'XL',10,0,NULL)");
+    const three = await (await send({mode:'quote',quantity:3,destination:national.address},false)).json();
+    assert.equal(three.shipping_charge,150);
+    const four = await (await send({mode:'quote',quantity:4,destination:national.address},false)).json();
+    assert.equal(four.customer_price,150);
+    assert.equal(four.shipping_charge,0);
+    const promotion = {...fixture('XL'),delivery:'Envío nacional',items:[{id:0,size:'XL',qty:4}],proof:four.proof};
+    assert.equal((await send({...promotion,acceptedTotal:1397},false)).status,409);
+    const free = await send({...promotion,acceptedTotal:1398},false);
+    assert.equal(free.status,200);
+    const freeReceipt = await free.json();
+    assert.equal(freeReceipt.shipping,0);
+    assert.equal(freeReceipt.total,1398);
+    assert.equal((await pg.query('SELECT payload FROM tarsi_web_orders WHERE number=$1',[freeReceipt.number])).rows[0].payload.skydropx.price,150);
+    const cached = await send({...promotion,key:randomUUID(),acceptedTotal:1548},false);
+    assert.equal(cached.status,200);
+    assert.equal((await cached.json()).total,1398);
+    await pg.query("UPDATE tarsi_order_flow SET hold_until=now()-interval '1 minute' WHERE recovery_key=$1",[promotion.key]);
+    const renewedFreeShipping = await send({mode:'renew',key:promotion.key},false);
+    assert.equal(renewedFreeShipping.status,200);
+    assert.equal((await renewedFreeShipping.json()).total,1398);
   } finally {
     global.fetch = savedFetch;
     delete global[symbol];

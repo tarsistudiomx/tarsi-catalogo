@@ -32,13 +32,13 @@
     const quantity = order.items.reduce((sum, x) => sum + x.qty, 0);
     const subtotal = saved?.subtotal ?? pricing(quantity);
     const local = (saved?.delivery ?? order.delivery) === 'Entrega en Querétaro';
-    const shipping = local ? 0 : saved?.shipping ?? quote?.customer_price;
+    const shipping = local ? 0 : saved?.shipping ?? window.TarsiShipping.charge(quote) ?? undefined;
     return [
       'PEDIDO TARSI', ...(saved ? ['NÚMERO: ' + saved.number] : []),
       ...order.items.map(x => (x.name || products[x.id].name) + ' | Talla ' + x.size + ' | ' + x.qty + ' pieza(s)'),
       'SUBTOTAL: ' + money(subtotal),
       'DESCUENTOS: ' + money(saved?.discount ?? quantity * unitPrice - subtotal),
-      'ENVÍO: ' + (local ? 'Por cotizar el día de la entrega' : shipping === undefined ? 'Por confirmar' : money(shipping)),
+      'ENVÍO: ' + (local ? 'Por cotizar el día de la entrega' : shipping === undefined ? 'Por confirmar' : shipping === 0 ? 'Gratis' : money(shipping)),
       ...([quote?.carrier_name, quote?.carrier_service].some(Boolean) ?
         ['PAQUETERÍA: ' + [quote.carrier_name, quote.carrier_service].filter(Boolean).join(' · ')] : []),
       'TOTAL: ' + (shipping === undefined ? 'Por confirmar' : money(saved?.total ?? subtotal + shipping)),
@@ -143,7 +143,7 @@
     for (const item of data.items) line(item.name, 'Talla ' + item.size + ' · ' + item.qty + ' pieza(s)');
     line('Subtotal', money(data.subtotal));
     const local = data.delivery === 'Entrega en Querétaro';
-    line('Envío', local ? 'Por cotizar el día de la entrega. TARSI te escribirá cuando tus playeras estén listas.' : money(data.shipping));
+    line('Envío', local ? 'Por cotizar el día de la entrega. TARSI te escribirá cuando tus playeras estén listas.' : data.delivery === 'Envío nacional' && data.shipping === 0 ? 'Gratis' : money(data.shipping));
     line(local ? 'Total a transferir por las playeras' : 'Total', money(data.total));
     const payable = Boolean(data.transfer) && ['Pendiente de pago','Pago por verificar'].includes(data.status);
     $('transferDetails').hidden = !payable;
@@ -312,7 +312,7 @@
     const order = recover ? null : draft();
     if (!recover && !order.items.length) return toast('AGREGA AL MENOS UNA PLAYERA');
     const quote = window.TarsiShipping.currentQuote();
-    const fee = quote?.customer_price ?? (order?.delivery === 'Entrega en Querétaro' ? 0 : null);
+    const fee = order?.delivery === 'Entrega en Querétaro' ? 0 : window.TarsiShipping.charge(quote);
     const form = document.querySelector('.cart-modal .checkout');
     busy = button.disabled = $('emailOrder').disabled = $('emailReceipt').disabled = form.inert = $('cartItems').inert = true;
     const feedback = recoveryFeedback || ($('orderConfirmation').open ? $('notificationStatus') : status);
